@@ -12,9 +12,34 @@ struct console {
 
     unsigned x;
     unsigned y;
-    struct console_cell_attribute attribute;
+    unsigned char attribute;
 
-    struct console_cell * buffer;
+    char * character_buffer;
+    unsigned char * attribute_buffer;
+
+    struct console_rgb palette[16];
+};
+
+/* http://en.wikipedia.org/wiki/ANSI_escape_code*/
+static struct console_rgb g_palette[] = {
+    /* normal */
+    {0,   0,   0}, /* black */
+    {128, 0,   0}, /* red */
+    {0,   128, 0}, /* green */
+    {128, 128, 0}, /* yellow */
+    {0,   0,   128}, /* blue */
+    {128, 0,   128}, /* magenta */
+    {0,   128, 128}, /* cyan */
+    {192, 192, 192}, /* gray */
+    /* bright */
+    {128, 128, 128}, /* dark gray */
+    {255, 0,   0}, /* red */
+    {0,   255, 0}, /* green */
+    {255, 255, 0}, /* yellow */
+    {0,   0,   255}, /* blue */
+    {255, 0,   255}, /* magenta */
+    {0,   255, 255}, /* cyan */
+    {255, 255, 255}, /* white */
 };
 
 console_t console_alloc(unsigned width, unsigned height) {
@@ -23,36 +48,39 @@ console_t console_alloc(unsigned width, unsigned height) {
     console->char_height = 8;
     console->width = width / 8;
     console->height = height / 8;
-    console->buffer = malloc(width * height * sizeof(struct console_cell));
+    size_t num_cells =width * height;
+    console->character_buffer = malloc(num_cells * sizeof(char));
+    console->attribute_buffer = malloc(num_cells * sizeof(unsigned char));
+    console_set_palette(console, &g_palette[0]);
     console_clear(console);
     return console;
 }
 
 void console_free(console_t console) {
     if(console) {
-        free(console->buffer);
+        free(console->character_buffer);
+        free(console->attribute_buffer);
         free(console);
     }
+}
+
+void console_set_palette(console_t console, struct console_rgb const * palette) {
+    memcpy(console->palette, palette, sizeof(struct console_rgb) * 16);
 }
 
 void console_clear(console_t console) {
     console->x = 0;
     console->y = 0;
-    console->attribute.foreground.r = 255;
-    console->attribute.foreground.g = 255;
-    console->attribute.foreground.b = 255;
-    console->attribute.background.r = 0;
-    console->attribute.background.g = 0;
-    console->attribute.background.b = 0;
+    console->attribute = 0xf;
 }
 
-void console_print_char(console_t console, int c) {
-    struct console_cell * dst = &console->buffer[console->y * console->width + console->x];
-    dst->character = (char)(c & 0xff);
-    memcpy(&dst->attribute, &console->attribute, sizeof(struct console_cell_attribute));
-    if(++(console->x) >= console->width) {
+void console_print_char(console_t console, char c) {
+    size_t offset = console->y * console->width + console->x;
+    console->character_buffer[offset] = c;
+    console->attribute_buffer[offset] = console->attribute;
+    if(++console->x >= console->width) {
         console->x = 0;
-        if(++(console->y) >= console->height) {
+        if(++console->y >= console->height) {
             console->y = console->height-1;
             console_scroll_lines(console, 1);
         }
@@ -90,16 +118,8 @@ void console_print_string(console_t console, const char * str) {
     } while(*str);
 }
 
-void console_set_foreground_attr_rgb(console_t console, unsigned char r, unsigned char g, unsigned char b) {
-    console->attribute.foreground.r = r;
-    console->attribute.foreground.g = g;
-    console->attribute.foreground.b = b;
-}
-
-void console_set_background_attr_rgb(console_t console, unsigned char r, unsigned char g, unsigned char b) {
-    console->attribute.background.r = r;
-    console->attribute.background.g = g;
-    console->attribute.background.b = b;
+void console_set_attr(console_t console, unsigned char attr) {
+    console->attribute = attr;
 }
 
 void console_goto_xy(console_t console, unsigned x, unsigned y) {
@@ -116,26 +136,15 @@ void console_scroll_lines(console_t console, unsigned y) {
         return;
     unsigned w = console->width;
     unsigned h = console->height;
+    unsigned offset = y * w;
     if(y < console->height) {
-        int i;
-        struct console_cell * dst = console->buffer;
-        struct console_cell * src = console->buffer + y * w;
-        int n = console->height - y;
-        size_t row_size_bytes = sizeof(struct console_cell) * w;
-        for (i = 0; i < n; ++i) {
-            memcpy(dst, src, row_size_bytes);
-            dst += w;
-            src += w;
-        }
+        int n = (console->height - y) * w;
+        memmove(console->character_buffer, console->character_buffer + offset, n);
+        memmove(console->attribute_buffer, console->attribute_buffer + offset, n);
     }
-    for(y = max(0, console->height - y); y < h; ++y) {
-        struct console_cell * dst = &console->buffer[y * w];
-        unsigned x;
-        for(x = 0; x < w; ++x, ++dst) {
-            dst->character = 0;
-            memcpy(&dst->attribute, &console->attribute, sizeof(struct console_cell_attribute));
-        }
-    }
+    y = max(0, console->height - y) * w;
+    memset(console->character_buffer + offset, 0, y);
+    memset(console->attribute_buffer + offset, console->attribute, y);
 }
 
 unsigned console_get_width(console_t console) {
@@ -165,7 +174,13 @@ unsigned console_get_y(console_t console) {
 int console_get_char_at(console_t console, unsigned x, unsigned y) {
     if(x >= console->width || y >= console->height)
         return 0;
-    return console->buffer[y * console->width + x].character;
+    return console->character_buffer[y * console->width + x];
+}
+
+unsigned char console_get_attr_at(console_t console, unsigned x, unsigned y) {
+    if(x >= console->width || y >= console->height)
+        return 0xf;
+    return console->attribute_buffer[y * console->width + x];
 }
 
 void console_get_string_at(console_t console, unsigned x, unsigned y, char * buffer, size_t num_bytes) {
@@ -176,10 +191,22 @@ void console_get_string_at(console_t console, unsigned x, unsigned y, char * buf
     }
     y = y * console->width;
     unsigned w = console->width;
-    struct console_cell * src = &console->buffer[y + x];
+    const char * src = &console->character_buffer[y + x];
     num_bytes--; /* reserve for terminating zero */
-    for(;num_bytes > 0 && x < w && src->character; --num_bytes, ++src, ++x) {
-        *buffer++ = src->character;
+    for(;num_bytes > 0 && x < w && *src; --num_bytes, ++x) {
+        *buffer++ = *src++;
     }
     *buffer = 0;
+}
+
+void console_get_coolor_at(console_t console, unsigned x, unsigned y, struct console_rgb * foreground, struct console_rgb * background) {
+    unsigned char attr = console_get_attr_at(console, x, y);
+    struct console_rgb const * f = &console->palette[attr & 0x0f];
+    struct console_rgb const * b = &console->palette[(attr & 0xf0) >> 4];
+    foreground->r = f->r;
+    foreground->g = f->g;
+    foreground->b = f->b;
+    background->r = b->r;
+    background->g = b->g;
+    background->b = b->b;
 }
