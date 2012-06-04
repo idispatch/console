@@ -12,6 +12,9 @@ struct console_rgb {
 struct console;
 typedef struct console * console_t;
 
+#define CONSOLE_NUM_PALETTE_ENTRIES 16
+#define FONT_8x8 0
+
 console_t console_alloc(unsigned width, unsigned height);
 void console_free(console_t console);
 void console_clear(console_t console);
@@ -31,6 +34,9 @@ int console_get_char_at(console_t console, unsigned x, unsigned y);
 unsigned char console_get_attr_at(console_t console, unsigned x, unsigned y);
 void console_get_string_at(console_t console, unsigned x, unsigned y, char * buffer, size_t num_bytes);
 void console_set_palette(console_t console, struct console_rgb const * palette);
+void console_get_palette(console_t console, struct console_rgb * palette);
 void console_get_coolor_at(console_t console, unsigned x, unsigned y, struct console_rgb * foreground, struct console_rgb * background);
+void console_set_font(console_t console, unsigned font);
+unsigned char * console_get_char_bitmap(console_t console, unsigned char c);
 
 #endif /* CONSOLE_H_ */

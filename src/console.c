@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+extern unsigned char console_font_8x8[];
+
 struct console {
     unsigned height;
     unsigned width;
@@ -18,6 +20,7 @@ struct console {
     unsigned char * attribute_buffer;
 
     struct console_rgb palette[16];
+    unsigned char * font_bitmap;
 };
 
 /* http://en.wikipedia.org/wiki/ANSI_escape_code*/
@@ -44,14 +47,13 @@ static struct console_rgb g_palette[] = {
 
 console_t console_alloc(unsigned width, unsigned height) {
     console_t console = (console_t)malloc(sizeof(struct console));
-    console->char_width = 8;
-    console->char_height = 8;
-    console->width = width / 8;
-    console->height = height / 8;
-    size_t num_cells =width * height;
+    console_set_font(console, FONT_8x8);
+    console_set_palette(console, &g_palette[0]);
+    console->width = width / console->char_width;
+    console->height = height / console->char_height;
+    size_t num_cells = console->width * console->height;
     console->character_buffer = malloc(num_cells * sizeof(char));
     console->attribute_buffer = malloc(num_cells * sizeof(unsigned char));
-    console_set_palette(console, &g_palette[0]);
     console_clear(console);
     return console;
 }
@@ -66,6 +68,25 @@ void console_free(console_t console) {
 
 void console_set_palette(console_t console, struct console_rgb const * palette) {
     memcpy(console->palette, palette, sizeof(struct console_rgb) * 16);
+}
+
+void console_get_palette(console_t console, struct console_rgb * palette) {
+    memcpy(palette, console->palette, sizeof(struct console_rgb) * 16);
+}
+
+void console_set_font(console_t console, unsigned font) {
+    switch(font) {
+    case FONT_8x8:
+        console->font_bitmap = console_font_8x8;
+        console->char_width = 8;
+        console->char_height = 8;
+        break;
+    default:
+        console->font_bitmap = console_font_8x8;
+        console->char_width = 8;
+        console->char_height = 8;
+        break;
+    }
 }
 
 void console_clear(console_t console) {
@@ -209,4 +230,10 @@ void console_get_coolor_at(console_t console, unsigned x, unsigned y, struct con
     background->r = b->r;
     background->g = b->g;
     background->b = b->b;
+}
+
+unsigned char * console_get_char_bitmap(console_t console, unsigned char c) {
+    unsigned bytes_per_row = console->char_width / 8;
+    unsigned offset = c;
+    return &console->font_bitmap[offset * console->char_height * bytes_per_row];
 }

@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <SDL.h>
-#include <SDL_gfxPrimitives.h>
 #include "console.h"
+#include "render.h"
 
 static SDL_Surface *g_screenSurface = NULL;
 console_t g_console = NULL;
@@ -60,6 +60,7 @@ static void init() {
     }
 
     g_console = console_alloc(SCREEN_WIDTH, SCREEN_HEIGHT);
+    font_render_init(g_screenSurface, g_console);
     console_print_string(g_console, "Hello World!\n0123456789");
 }
 
@@ -101,9 +102,8 @@ static void render(void) {
     for(y = 0; y < num_lines; y++) {
         destRect.y = y * char_height;
         SDL_FillRect(g_screenSurface, &destRect, black);
-
         console_get_string_at(g_console, 0, y, str, sizeof(str));
-        stringRGBA(g_screenSurface, 0, destRect.y, str, 255, 255, 255, 255);
+        font_render_string(g_console, g_screenSurface, 0, destRect.y, str);
     }
     SDL_UpdateRect(g_screenSurface, 0, 0, 0, 0);
 
@@ -111,41 +111,5 @@ static void render(void) {
     sprintf(hh, "test %d ", nn++);
     console_print_string(g_console, hh);
 
-    /*SDL_FillRect(g_screenSurface, NULL, SDL_MapRGB(g_screenSurface->format, 0, 0, 255));
-
-    static int nPosition = 0;
-    static int nFrame = 0;
-
-    SDL_Rect srcRect;
-    SDL_Rect destRect;
-
-    // Build a source SDL_Rect which will copy only a small portion of the texture.
-    srcRect.x = ((nFrame % 5) * 64);
-    srcRect.y = ((nFrame / 5) * 64);
-    srcRect.w = 64;
-    srcRect.h = 64;
-
-    destRect.x = nPosition;
-    destRect.y = 200;
-    destRect.w = 64;
-    destRect.h = 64;
-
-    SDL_BlitSurface(g_donutSurface, &srcRect, g_screenSurface, &destRect);
-    // Update the changed portion of the screen
-    SDL_UpdateRects(g_screenSurface, 1, &destRect);
-
-    //
-    // Increment the sprite's frame number. Our sprite's animation sequence
-    // consists of 30 frames (0-29).
-    //
-
-    ++nFrame;
-    if (nFrame > 29)
-        nFrame = 0;
-
-    ++nPosition;
-    if (nPosition > 640)
-        nPosition = 0;
-*/
     SDL_Flip(g_screenSurface);
 }
