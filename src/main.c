@@ -131,9 +131,9 @@ static void render_callback(console_t console, console_update_t * u) {
 }
 
 static void render(void) {
-    static char c = 'A';
+    static char c = 0;
     console_print_char(g_console, c++);
-    //if(c>'Z') c='A';
+    //if(c>'z') c='A';
     //console_print_string(g_console, "Hello World! ");
     //SDL_UpdateRects(dst, 1, &drect);
     //SDL_UpdateRect(g_screenSurface, 0,0,0,0);

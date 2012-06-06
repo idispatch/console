@@ -59,7 +59,7 @@ void console_clear(console_t console);
 void console_print_char(console_t console, char c);
 void console_print_string(console_t console, const char * str);
 void console_goto_xy(console_t console, unsigned x, unsigned y);
-void console_scroll_lines(console_t console, unsigned y);
+void console_scroll_lines(console_t console, unsigned n);
 unsigned console_get_width(console_t console);
 unsigned console_get_height(console_t console);
 unsigned console_get_char_width(console_t console);

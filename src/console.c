@@ -126,24 +126,23 @@ void console_clear(console_t console) {
 void console_print_char(console_t console, char c) {
     if(c == '\n') { /* New line */
         console->x = 0;
-        console->y += 1;
-        if(console->y >= console->height) {
+        if(++console->y >= console->height) {
             console->y = console->height - 1;
             console_scroll_lines(console, 1);
         }
         return;
     }
-    if(c == '\t') { /* Tabulate */
+    /*if(c == '\t') {
         int i;
         for(i = 0; i < 4; i++) {
             console_print_char(console, ' ');
         }
         return;
     }
-    if(c == '\f') { /* Form feed */
+    if(c == '\f') {
         console_scroll_lines(console, console->height);
         return;
-    }
+    }*/
     console_update_t u;
     u.type = CONSOLE_UPDATE_CHAR;
     u.data.u_char.x = console->x;
@@ -191,34 +190,32 @@ void console_goto_xy(console_t console, unsigned x, unsigned y) {
     console->y = y;
 }
 
-void console_scroll_lines(console_t console, unsigned y) {
-    if(y == 0)
+void console_scroll_lines(console_t console, unsigned n) {
+    if(n == 0)
         return;
+    unsigned w = console->width;
+    unsigned h = console->height;
     console_update_t u;
     u.type = CONSOLE_UPDATE_SCROLL;
     u.data.u_scroll.y1 = 0;
-    unsigned w = console->width;
-    unsigned h = console->height;
-    unsigned offset = y * w;
-    if(y < console->height) {
-        int n = (console->height - y) * w;
-        memmove(console->character_buffer, console->character_buffer + offset, n);
-        memmove(console->attribute_buffer, console->attribute_buffer + offset, n);
+    u.data.u_scroll.y2 = min(h, n);
+    u.data.u_scroll.n = h - min(h, n);
+    console->callback(console, &u);
+    unsigned offset = n * w;
+    if(n < console->height) {
+        int bytes = (console->height - n) * w;
+        memmove(console->character_buffer, console->character_buffer + offset, bytes);
+        memmove(console->attribute_buffer, console->attribute_buffer + offset, bytes);
     }
-    if(y < h) {
-        u.data.u_scroll.y2 = y;
-        u.data.u_scroll.n = h - y;
-        offset = (h - y) * w;
-        y = y * w;
-        memset(console->character_buffer + offset, 0, y);
-        memset(console->attribute_buffer + offset, console->attribute, y);
-        console->callback(console, &u);
+    if(n < h) {
+        offset = (h - n) * w;
+        n = n * w;
+        memset(console->character_buffer + offset, 0, n);
+        memset(console->attribute_buffer + offset, console->attribute, n);
     } else {
-        u.data.u_scroll.y2 = h;
-        u.data.u_scroll.n = h;
-        y = h * w;
-        memset(console->character_buffer, 0, y);
-        memset(console->attribute_buffer, console->attribute, y);
+        n = h * w;
+        memset(console->character_buffer, 0, n);
+        memset(console->attribute_buffer, console->attribute, n);
     }
 }
 
