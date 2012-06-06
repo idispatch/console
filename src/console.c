@@ -1,13 +1,15 @@
 #include "console.h"
+#include "font.h"
 #include <malloc.h>
 #include <string.h>
 #include <stdlib.h>
 
-extern unsigned char console_font_8x8[];
-
 struct console {
     unsigned height;
     unsigned width;
+
+    unsigned view_height;
+    unsigned view_width;
 
     unsigned char_height;
     unsigned char_width;
@@ -50,15 +52,12 @@ static void console_callback(console_t console, console_update_t * p) {
 }
 
 console_t console_alloc(unsigned width, unsigned height) {
-    console_t console = (console_t)malloc(sizeof(struct console));
+    console_t console = (console_t)calloc(1, sizeof(struct console));
+    console->view_width = width;
+    console->view_height = height;
     console_set_callback(console, 0);
-    console_set_font(console, FONT_8x8_SYSTEM);
     console_set_palette(console, &g_palette[0]);
-    console->width = width / console->char_width;
-    console->height = height / console->char_height;
-    size_t num_cells = console->width * console->height;
-    console->character_buffer = malloc(num_cells * sizeof(char));
-    console->attribute_buffer = malloc(num_cells * sizeof(unsigned char));
+    console_set_font(console, FONT_8x8_SYSTEM);
     console_clear(console);
     return console;
 }
@@ -87,21 +86,26 @@ void console_get_palette(console_t console, console_rgb_t * palette) {
     memcpy(palette, console->palette, sizeof(console_rgb_t) * 16);
 }
 
-void console_set_font(console_t console, unsigned font) {
+void console_set_font(console_t console, font_id_t font) {
     unsigned char * old_font = console->font_bitmap;
-    switch(font) {
-    case FONT_8x8_SYSTEM:
-        console->font_bitmap = console_font_8x8;
-        console->char_width = 8;
-        console->char_height = 8;
-        break;
-    default:
-        console->font_bitmap = console_font_8x8;
-        console->char_width = 8;
-        console->char_height = 8;
-        break;
-    }
+    unsigned char * new_font = console_fonts[font].font_bitmap;
+    if(old_font == new_font)
+        return;
+
+    console->char_height = console_fonts[font].char_height;
+    console->char_width = console_fonts[font].char_width;
+    console->font_bitmap = new_font;
+
+    console->width = console->view_width / console->char_width;
+    console->height = console->view_height / console->char_height;
+
+    size_t num_cells = console->width * console->height;
+    console->character_buffer = realloc(console->character_buffer, num_cells * sizeof(char));
+    console->attribute_buffer = realloc(console->attribute_buffer, num_cells * sizeof(unsigned char));
+
     console_update_t u;
+    u.data.u_font.char_width = console->char_width;
+    u.data.u_font.char_height = console->char_height;
     u.data.u_font.font_bitmap = console->font_bitmap;
     u.type = CONSOLE_UPDATE_FONT;
     console->callback(console, &u);

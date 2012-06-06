@@ -4,7 +4,7 @@
 static Uint32 g_palette[CONSOLE_NUM_PALETTE_ENTRIES];
 static SDL_Surface * g_fontSurface = NULL;
 
-static void font_render_init_font_surface(SDL_Surface * dst, console_t console) {
+static void render_init_font_surface(SDL_Surface * dst, console_t console) {
     unsigned charWidth = console_get_char_width(console);
     unsigned charHeight = console_get_char_height(console);
     if(g_fontSurface) {
@@ -55,17 +55,17 @@ static void font_render_init_font_surface(SDL_Surface * dst, console_t console) 
     SDL_UnlockSurface(g_fontSurface);
 }
 
-void font_render_init(SDL_Surface * dst, console_t console){
+void render_init(SDL_Surface * dst, console_t console){
     int i;
     console_rgb_t rgb[CONSOLE_NUM_PALETTE_ENTRIES];
     console_get_palette(console, &rgb[0]);
     for(i=0; i<CONSOLE_NUM_PALETTE_ENTRIES; i++) {
         g_palette[i] = SDL_MapRGB(dst->format, rgb[i].r, rgb[i].g, rgb[i].b);
     }
-    font_render_init_font_surface(dst, console);
+    render_init_font_surface(dst, console);
 }
 
-void font_render_done() {
+void render_done() {
     if(g_fontSurface) {
         SDL_FreeSurface(g_fontSurface);
         g_fontSurface = NULL;
@@ -73,20 +73,19 @@ void font_render_done() {
     memset(g_palette, 0, sizeof(g_palette));
 }
 
-void font_render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y, char c) {
+void render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y, char c) {
     SDL_Rect srect;
     SDL_Rect drect;
     unsigned w = srect.w = drect.w = console_get_char_width(console);
     srect.h = drect.h = console_get_char_height(console);
     srect.x = ((unsigned char)c % 16) * w;
-    srect.y = ((unsigned char)c / 16) * w;
+    srect.y = ((unsigned char)c / 16) * srect.h;
     drect.x = x;
     drect.y = y;
     SDL_BlitSurface(g_fontSurface, &srect, dst, &drect);
-    SDL_UpdateRects(dst, 1, &drect);
 }
 
-void font_render_string(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y, char * str) {
+void render_string(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y, char * str) {
     SDL_Rect srect;
     SDL_Rect drect;
     unsigned w = srect.w = drect.w = console_get_char_width(console);
@@ -102,21 +101,26 @@ void font_render_string(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y
     }
 }
 
-Uint32 font_render_get_background_color(console_t console) {
+Uint32 render_get_background_color(console_t console) {
     return g_palette[console_get_background_color(console)];
 }
 
-Uint32 font_render_get_foreground_color(console_t console) {
+Uint32 render_get_foreground_color(console_t console) {
     return g_palette[console_get_foreground_color(console)];
 }
-/*SDL_Rect srect;
-SDL_Rect drect;
-srect.x = 0;
-srect.y = 0;
-srect.w = console_get_char_width(console) * 16;
-srect.h = console_get_char_height(console) * 16;
-drect.x = srect.x;
-drect.y = srect.y;
-drect.w = srect.w;
-drect.h = srect.h;
-SDL_BlitSurface(g_fontSurface, &srect, dst, &drect);*/
+
+#ifdef _DEBUG
+void render_font_surface(console_t console, SDL_Surface * dst) {
+    SDL_Rect srect;
+    SDL_Rect drect;
+    srect.x = 0;
+    srect.y = 0;
+    srect.w = console_get_char_width(console) * 16;
+    srect.h = console_get_char_height(console) * 16;
+    drect.x = srect.x;
+    drect.y = srect.y;
+    drect.w = srect.w;
+    drect.h = srect.h;
+    SDL_BlitSurface(g_fontSurface, &srect, dst, &drect);
+}
+#endif

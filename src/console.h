@@ -41,6 +41,8 @@ typedef struct {
             console_rgb_t * palette;
         } u_palette;
         struct {
+            unsigned char_width;
+            unsigned char_height;
             unsigned char * font_bitmap;
         } u_font;
     } data;
@@ -51,7 +53,12 @@ typedef struct console * console_t;
 typedef void (*console_callback_t)(console_t console, console_update_t * p);
 
 #define CONSOLE_NUM_PALETTE_ENTRIES 16
-#define FONT_8x8_SYSTEM 0
+
+typedef enum {
+    FONT_8x8_SYSTEM,
+    FONT_8x10,
+    FONT_8x16,
+} font_id_t;
 
 console_t console_alloc(unsigned width, unsigned height);
 void console_free(console_t console);
@@ -74,7 +81,7 @@ void console_get_string_at(console_t console, unsigned x, unsigned y, char * buf
 void console_set_palette(console_t console, console_rgb_t const * palette);
 void console_get_palette(console_t console, console_rgb_t * palette);
 void console_get_color_at(console_t console, unsigned x, unsigned y, console_rgb_t * foreground, console_rgb_t * background);
-void console_set_font(console_t console, unsigned font);
+void console_set_font(console_t console, font_id_t font);
 unsigned char * console_get_char_bitmap(console_t console, unsigned char c);
 void console_set_callback(console_t console, console_callback_t callback);
 

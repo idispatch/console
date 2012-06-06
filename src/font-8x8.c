@@ -1,7 +1,3 @@
-/* ---- 8x8 font definition ---- */
-
-/*  LGPL (c) A. Schiffler */
-
 unsigned char console_font_8x8[] = {
 
 /*
