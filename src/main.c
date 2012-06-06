@@ -7,27 +7,27 @@
 #include "render.h"
 
 static SDL_Surface *g_screenSurface = NULL;
-console_t g_console = NULL;
+static console_t g_console = NULL;
 
-const int UPDATE_INTERVAL = 10;
+static const int UPDATE_INTERVAL = 5;
 
-const int SCREEN_WIDTH = 1024;
-const int SCREEN_HEIGHT = 600;
-const int SCREEN_BPP = 32;
+static const int SCREEN_WIDTH = 1024;
+static const int SCREEN_HEIGHT = 600;
+static const int SCREEN_BPP = 32;
 
-int main(int argc, char *argv[]);
 static void init();
 static void shutDown();
 static Uint32 timeLeft();
 static void render();
+static void render_callback(console_t console, console_update_t * u);
 
 int main(int argc, char *argv[]) {
     init();
 
     bool bDone = false;
 
-    SDL_FillRect(g_screenSurface, NULL, SDL_MapRGB(g_screenSurface->format, 0, 0, 0));
-    SDL_UpdateRect(g_screenSurface, 0, 0, 0, 0);
+    //SDL_FillRect(g_screenSurface, NULL, SDL_MapRGB(g_screenSurface->format, 0, 0, 0));
+    //SDL_UpdateRect(g_screenSurface, 0, 0, 0, 0);
 
     while (bDone == false) {
         SDL_Event event;
@@ -51,7 +51,10 @@ static void init() {
         exit(1);
     }
 
-    g_screenSurface = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, SDL_HWSURFACE | SDL_DOUBLEBUF);
+    g_screenSurface = SDL_SetVideoMode(SCREEN_WIDTH,
+                                       SCREEN_HEIGHT,
+                                       SCREEN_BPP,
+                                       SDL_HWSURFACE | SDL_FULLSCREEN | SDL_NOFRAME);
 
     if (g_screenSurface == NULL) {
         printf("Unable to set %dx%dx%d video: %s\n",
@@ -61,10 +64,14 @@ static void init() {
 
     g_console = console_alloc(SCREEN_WIDTH, SCREEN_HEIGHT);
     font_render_init(g_screenSurface, g_console);
+    console_set_callback(g_console, render_callback);
+    console_clear(g_console);
     console_print_string(g_console, "Hello World!\n0123456789");
 }
 
 static void shutDown() {
+    font_render_done();
+    console_set_callback(g_console, 0);
     console_free(g_console);
     SDL_FreeSurface(g_screenSurface);
     SDL_Quit();
@@ -84,32 +91,33 @@ static Uint32 timeLeft(void) {
     return (timeToNextUpdate - currentTime);
 }
 
-static void render(void) {
-    SDL_Delay(timeLeft());
-
-    Uint32 black = SDL_MapRGB(g_screenSurface->format, 0, 0, 0);
-    SDL_Rect destRect;
-    destRect.x = 0;
-    destRect.w = SCREEN_WIDTH;
-    destRect.h = SCREEN_HEIGHT;
-
-    static int nn = 0;
-
-    char str[200];
-    unsigned num_lines = console_get_height(g_console);
-    unsigned char_height = console_get_char_height(g_console);
-    unsigned y;
-    for(y = 0; y < num_lines; y++) {
-        destRect.y = y * char_height;
-        SDL_FillRect(g_screenSurface, &destRect, black);
-        console_get_string_at(g_console, 0, y, str, sizeof(str));
-        font_render_string(g_console, g_screenSurface, 0, destRect.y, str);
+static void render_callback(console_t console, console_update_t * u) {
+    switch(u->type) {
+    case CONSOLE_UPDATE_CHAR: {
+            /*printf("CONSOLE_UPDATE_CHAR: (%d,%d=%c[%x])\n",
+                    u->data.u_char.x, u->data.u_char.y, u->data.u_char.c, (unsigned)u->data.u_char.a);*/
+            unsigned w = console_get_char_width(console);
+            unsigned h = console_get_char_height(console);
+            unsigned x = u->data.u_char.x * w;
+            unsigned y = u->data.u_char.y * h;
+            font_render_char(console,
+                             g_screenSurface,
+                             x,
+                             y,
+                             u->data.u_char.c);
+        }
+        break;
+    case CONSOLE_UPDATE_ROWS:
+        printf("CONSOLE_UPDATE_ROWS: (%d,%d)x(%d,%d)\n", u->data.u_rows.x1, u->data.u_rows.y1, u->data.u_rows.x2, u->data.u_rows.y2);
+        break;
+    case CONSOLE_UPDATE_SCROLL:
+        printf("CONSOLE_UPDATE_SCROLL: (%d,%d)\n", u->data.u_scroll.y1, u->data.u_scroll.y2);
+        break;
     }
-    SDL_UpdateRect(g_screenSurface, 0, 0, 0, 0);
+}
 
-    char hh[60];
-    sprintf(hh, "test %d ", nn++);
-    console_print_string(g_console, hh);
-
-    SDL_Flip(g_screenSurface);
+static void render(void) {
+    static char c = 0;
+    SDL_Delay(timeLeft());
+    console_print_char(g_console, c++);
 }

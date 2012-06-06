@@ -19,12 +19,13 @@ struct console {
     char * character_buffer;
     unsigned char * attribute_buffer;
 
-    struct console_rgb palette[16];
+    console_rgb_t palette[16];
     unsigned char * font_bitmap;
+    console_callback_t callback;
 };
 
 /* http://en.wikipedia.org/wiki/ANSI_escape_code*/
-static struct console_rgb g_palette[] = {
+static console_rgb_t g_palette[] = {
     /* normal */
     {0,   0,   0}, /* black */
     {128, 0,   0}, /* red */
@@ -45,9 +46,13 @@ static struct console_rgb g_palette[] = {
     {255, 255, 255}, /* white */
 };
 
+static void console_callback(console_t console, console_update_t * p) {
+}
+
 console_t console_alloc(unsigned width, unsigned height) {
     console_t console = (console_t)malloc(sizeof(struct console));
-    console_set_font(console, FONT_8x8);
+    console_set_callback(console, 0);
+    console_set_font(console, FONT_8x8_SYSTEM);
     console_set_palette(console, &g_palette[0]);
     console->width = width / console->char_width;
     console->height = height / console->char_height;
@@ -66,17 +71,26 @@ void console_free(console_t console) {
     }
 }
 
-void console_set_palette(console_t console, struct console_rgb const * palette) {
-    memcpy(console->palette, palette, sizeof(struct console_rgb) * 16);
+void console_set_callback(console_t console, console_callback_t callback) {
+    console->callback = callback == 0 ? console_callback : callback;
 }
 
-void console_get_palette(console_t console, struct console_rgb * palette) {
-    memcpy(palette, console->palette, sizeof(struct console_rgb) * 16);
+void console_set_palette(console_t console, console_rgb_t const * palette) {
+    memcpy(console->palette, palette, sizeof(console_rgb_t) * 16);
+    console_update_t u;
+    u.type = CONSOLE_UPDATE_PALETTE;
+    u.data.u_palette.palette = console->palette;
+    console->callback(console, &u);
+}
+
+void console_get_palette(console_t console, console_rgb_t * palette) {
+    memcpy(palette, console->palette, sizeof(console_rgb_t) * 16);
 }
 
 void console_set_font(console_t console, unsigned font) {
+    unsigned char * old_font = console->font_bitmap;
     switch(font) {
-    case FONT_8x8:
+    case FONT_8x8_SYSTEM:
         console->font_bitmap = console_font_8x8;
         console->char_width = 8;
         console->char_height = 8;
@@ -87,15 +101,55 @@ void console_set_font(console_t console, unsigned font) {
         console->char_height = 8;
         break;
     }
+    console_update_t u;
+    u.data.u_font.font_bitmap = console->font_bitmap;
+    u.type = CONSOLE_UPDATE_FONT;
+    console->callback(console, &u);
 }
 
 void console_clear(console_t console) {
     console->x = 0;
     console->y = 0;
     console->attribute = 0xf;
+    unsigned n = console->height * console->width;
+    memset(console->character_buffer, 0, n);
+    memset(console->attribute_buffer, console->attribute, n);
+    console_update_t u;
+    u.type = CONSOLE_UPDATE_ROWS;
+    u.data.u_rows.x1 = 0;
+    u.data.u_rows.y1 = 0;
+    u.data.u_rows.x2 = console->width;
+    u.data.u_rows.y2 = console->height;
+    console->callback(console, &u);
 }
 
 void console_print_char(console_t console, char c) {
+    if(c == '\n') { /* New line */
+        console->x = 0;
+        console->y += 1;
+        if(console->y >= console->height) {
+            console->y = console->height - 1;
+            console_scroll_lines(console, 1);
+        }
+        return;
+    }
+    if(c == '\t') { /* Tabulate */
+        int i;
+        for(i = 0; i < 4; i++) {
+            console_print_char(console, ' ');
+        }
+        return;
+    }
+    if(c == '\f') { /* form feed */
+        console_scroll_lines(console, console->height);
+        return;
+    }
+    console_update_t u;
+    u.type = CONSOLE_UPDATE_CHAR;
+    u.data.u_char.x = console->x;
+    u.data.u_char.y = console->y;
+    u.data.u_char.c = c;
+    u.data.u_char.a = console->attribute;
     size_t offset = console->y * console->width + console->x;
     console->character_buffer[offset] = c;
     console->attribute_buffer[offset] = console->attribute;
@@ -106,37 +160,22 @@ void console_print_char(console_t console, char c) {
             console_scroll_lines(console, 1);
         }
     }
+    console->callback(console, &u);
 }
 
 void console_print_string(console_t console, const char * str) {
     if(!str || !*str)
         return;
+    console_update_t u;
+    u.type = CONSOLE_UPDATE_ROWS;
+    u.data.u_rows.x1 = console->x;
+    u.data.u_rows.y1 = console->y;
     do {
-        if(*str == '\n') { /* New line */
-            console->x = 0;
-            console->y += 1;
-            if(console->y >= console->height) {
-                console->y = console->height - 1;
-                console_scroll_lines(console, 1);
-            }
-            str++;
-            continue;
-        }
-        if(*str == '\t') { /* Tabulate */
-            int i;
-            for(i = 0; i < 4; i++) {
-                console_print_char(console, ' ');
-            }
-            str++;
-            continue;
-        }
-        if(*str == '\f') { /* form feed */
-            console_scroll_lines(console, console->height);
-            str++;
-            continue;
-        }
         console_print_char(console, *str++);
     } while(*str);
+    u.data.u_rows.x2 = console->x;
+    u.data.u_rows.y2 = console->y;
+    console->callback(console, &u);
 }
 
 void console_set_attr(console_t console, unsigned char attr) {
@@ -155,6 +194,9 @@ void console_goto_xy(console_t console, unsigned x, unsigned y) {
 void console_scroll_lines(console_t console, unsigned y) {
     if(y == 0)
         return;
+    console_update_t u;
+    u.type = CONSOLE_UPDATE_SCROLL;
+    u.data.u_scroll.y1 = 0;
     unsigned w = console->width;
     unsigned h = console->height;
     unsigned offset = y * w;
@@ -163,9 +205,19 @@ void console_scroll_lines(console_t console, unsigned y) {
         memmove(console->character_buffer, console->character_buffer + offset, n);
         memmove(console->attribute_buffer, console->attribute_buffer + offset, n);
     }
-    y = max(0, console->height - y) * w;
-    memset(console->character_buffer + offset, 0, y);
-    memset(console->attribute_buffer + offset, console->attribute, y);
+    if(y < h) {
+        offset = (h - y) * w;
+        y = y * w;
+        memset(console->character_buffer + offset, 0, y);
+        memset(console->attribute_buffer + offset, console->attribute, y);
+        u.data.u_scroll.y2 = y;
+        console->callback(console, &u);
+    } else {
+        u.data.u_scroll.y2 = h;
+        y = h * w;
+        memset(console->character_buffer, 0, y);
+        memset(console->attribute_buffer, console->attribute, y);
+    }
 }
 
 unsigned console_get_width(console_t console) {
@@ -220,10 +272,10 @@ void console_get_string_at(console_t console, unsigned x, unsigned y, char * buf
     *buffer = 0;
 }
 
-void console_get_coolor_at(console_t console, unsigned x, unsigned y, struct console_rgb * foreground, struct console_rgb * background) {
+void console_get_color_at(console_t console, unsigned x, unsigned y, console_rgb_t * foreground, console_rgb_t * background) {
     unsigned char attr = console_get_attr_at(console, x, y);
-    struct console_rgb const * f = &console->palette[attr & 0x0f];
-    struct console_rgb const * b = &console->palette[(attr & 0xf0) >> 4];
+    console_rgb_t const * f = &console->palette[attr & 0x0f];
+    console_rgb_t const * b = &console->palette[(attr & 0xf0) >> 4];
     foreground->r = f->r;
     foreground->g = f->g;
     foreground->b = f->b;
@@ -234,6 +286,7 @@ void console_get_coolor_at(console_t console, unsigned x, unsigned y, struct con
 
 unsigned char * console_get_char_bitmap(console_t console, unsigned char c) {
     unsigned bytes_per_row = console->char_width / 8;
-    unsigned offset = c;
-    return &console->font_bitmap[offset * console->char_height * bytes_per_row];
+    unsigned bytes_per_char = bytes_per_row * console->char_height;
+    unsigned offset = c * bytes_per_char;
+    return &console->font_bitmap[offset];
 }
