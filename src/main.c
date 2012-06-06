@@ -94,8 +94,6 @@ static Uint32 timeLeft(void) {
 static void render_callback(console_t console, console_update_t * u) {
     switch(u->type) {
     case CONSOLE_UPDATE_CHAR: {
-            /*printf("CONSOLE_UPDATE_CHAR: (%d,%d=%c[%x])\n",
-                    u->data.u_char.x, u->data.u_char.y, u->data.u_char.c, (unsigned)u->data.u_char.a);*/
             unsigned w = console_get_char_width(console);
             unsigned h = console_get_char_height(console);
             unsigned x = u->data.u_char.x * w;
@@ -108,16 +106,35 @@ static void render_callback(console_t console, console_update_t * u) {
         }
         break;
     case CONSOLE_UPDATE_ROWS:
+        /*
         printf("CONSOLE_UPDATE_ROWS: (%d,%d)x(%d,%d)\n", u->data.u_rows.x1, u->data.u_rows.y1, u->data.u_rows.x2, u->data.u_rows.y2);
+        fflush(stdout);
+        */
         break;
-    case CONSOLE_UPDATE_SCROLL:
-        printf("CONSOLE_UPDATE_SCROLL: (%d,%d)\n", u->data.u_scroll.y1, u->data.u_scroll.y2);
+    case CONSOLE_UPDATE_SCROLL: {
+            SDL_Rect src;
+            SDL_Rect dst;
+            unsigned h = console_get_char_height(console);
+            src.x = dst.x = 0;
+            src.w = dst.w = SCREEN_WIDTH;
+            src.h = dst.h = u->data.u_scroll.n * h;
+            src.y = u->data.u_scroll.y2 * h;
+            dst.y = u->data.u_scroll.y1 * h;
+            SDL_BlitSurface(g_screenSurface, &src, g_screenSurface, &dst);
+            dst.y = SCREEN_HEIGHT - (console_get_height(console) - u->data.u_scroll.n) * h;
+            dst.h = (u->data.u_scroll.y2 - u->data.u_scroll.y1) * h;
+            SDL_FillRect(g_screenSurface, &dst, font_render_get_background_color(console));
+            SDL_UpdateRect(g_screenSurface, 0, 0, 0, 0);
+        }
         break;
     }
 }
 
 static void render(void) {
-    static char c = 0;
-    SDL_Delay(timeLeft());
+    static char c = 'A';
     console_print_char(g_console, c++);
+    //if(c>'Z') c='A';
+    //console_print_string(g_console, "Hello World! ");
+    //SDL_UpdateRects(dst, 1, &drect);
+    //SDL_UpdateRect(g_screenSurface, 0,0,0,0);
 }

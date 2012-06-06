@@ -140,7 +140,7 @@ void console_print_char(console_t console, char c) {
         }
         return;
     }
-    if(c == '\f') { /* form feed */
+    if(c == '\f') { /* Form feed */
         console_scroll_lines(console, console->height);
         return;
     }
@@ -153,6 +153,7 @@ void console_print_char(console_t console, char c) {
     size_t offset = console->y * console->width + console->x;
     console->character_buffer[offset] = c;
     console->attribute_buffer[offset] = console->attribute;
+    console->callback(console, &u);
     if(++console->x >= console->width) {
         console->x = 0;
         if(++console->y >= console->height) {
@@ -160,7 +161,6 @@ void console_print_char(console_t console, char c) {
             console_scroll_lines(console, 1);
         }
     }
-    console->callback(console, &u);
 }
 
 void console_print_string(console_t console, const char * str) {
@@ -206,14 +206,16 @@ void console_scroll_lines(console_t console, unsigned y) {
         memmove(console->attribute_buffer, console->attribute_buffer + offset, n);
     }
     if(y < h) {
+        u.data.u_scroll.y2 = y;
+        u.data.u_scroll.n = h - y;
         offset = (h - y) * w;
         y = y * w;
         memset(console->character_buffer + offset, 0, y);
         memset(console->attribute_buffer + offset, console->attribute, y);
-        u.data.u_scroll.y2 = y;
         console->callback(console, &u);
     } else {
         u.data.u_scroll.y2 = h;
+        u.data.u_scroll.n = h;
         y = h * w;
         memset(console->character_buffer, 0, y);
         memset(console->attribute_buffer, console->attribute, y);
@@ -254,6 +256,14 @@ unsigned char console_get_attr_at(console_t console, unsigned x, unsigned y) {
     if(x >= console->width || y >= console->height)
         return 0xf;
     return console->attribute_buffer[y * console->width + x];
+}
+
+unsigned char console_get_background_color(console_t console) {
+    return (console->attribute & 0xf0) >> 4;
+}
+
+unsigned char console_get_foreground_color(console_t console) {
+    return console->attribute & 0xf;
 }
 
 void console_get_string_at(console_t console, unsigned x, unsigned y, char * buffer, size_t num_bytes) {

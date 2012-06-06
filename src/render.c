@@ -102,6 +102,13 @@ void font_render_string(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y
     }
 }
 
+Uint32 font_render_get_background_color(console_t console) {
+    return g_palette[console_get_background_color(console)];
+}
+
+Uint32 font_render_get_foreground_color(console_t console) {
+    return g_palette[console_get_foreground_color(console)];
+}
 /*SDL_Rect srect;
 SDL_Rect drect;
 srect.x = 0;

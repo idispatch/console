@@ -35,6 +35,7 @@ typedef struct {
         struct {
             unsigned y1;
             unsigned y2;
+            unsigned n;
         } u_scroll;
         struct {
             console_rgb_t * palette;
@@ -67,6 +68,8 @@ unsigned console_get_x(console_t console);
 unsigned console_get_y(console_t console);
 int console_get_char_at(console_t console, unsigned x, unsigned y);
 unsigned char console_get_attr_at(console_t console, unsigned x, unsigned y);
+unsigned char console_get_background_color(console_t console);
+unsigned char console_get_foreground_color(console_t console);
 void console_get_string_at(console_t console, unsigned x, unsigned y, char * buffer, size_t num_bytes);
 void console_set_palette(console_t console, console_rgb_t const * palette);
 void console_get_palette(console_t console, console_rgb_t * palette);
