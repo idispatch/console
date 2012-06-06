@@ -2,6 +2,7 @@
 #define CONSOLE_H_
 
 #include <sys/types.h>
+#include <stdbool.h>
 
 typedef struct {
     unsigned char r;
@@ -15,6 +16,8 @@ typedef enum {
     CONSOLE_UPDATE_SCROLL,
     CONSOLE_UPDATE_PALETTE,
     CONSOLE_UPDATE_FONT,
+    CONSOLE_UPDATE_CURSOR_VISIBILITY,
+    CONSOLE_UPDATE_CURSOR_POSITION
 } console_update_type;
 
 typedef struct {
@@ -45,6 +48,11 @@ typedef struct {
             unsigned char_height;
             unsigned char * font_bitmap;
         } u_font;
+        struct {
+            unsigned x;
+            unsigned y;
+            bool cursor_visible;
+        } u_cursor;
     } data;
 } console_update_t;
 
@@ -77,12 +85,15 @@ int console_get_char_at(console_t console, unsigned x, unsigned y);
 unsigned char console_get_attr_at(console_t console, unsigned x, unsigned y);
 unsigned char console_get_background_color(console_t console);
 unsigned char console_get_foreground_color(console_t console);
-void console_get_string_at(console_t console, unsigned x, unsigned y, char * buffer, size_t num_bytes);
 void console_set_palette(console_t console, console_rgb_t const * palette);
 void console_get_palette(console_t console, console_rgb_t * palette);
 void console_get_color_at(console_t console, unsigned x, unsigned y, console_rgb_t * foreground, console_rgb_t * background);
 void console_set_font(console_t console, font_id_t font);
 unsigned char * console_get_char_bitmap(console_t console, unsigned char c);
 void console_set_callback(console_t console, console_callback_t callback);
+void console_set_cursor_blink_rate(console_t console, unsigned rate);
+void console_blink_cursor(console_t console);
+void console_show_cursor(console_t console);
+void console_hide_cursor(console_t console);
 
 #endif /* CONSOLE_H_ */

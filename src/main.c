@@ -15,7 +15,6 @@ static const int SCREEN_BPP = 32;
 
 static void init();
 static void shutDown();
-/*static Uint32 timeLeft();*/
 static void render();
 static void render_callback(console_t console, console_update_t * u);
 
@@ -102,10 +101,6 @@ static void render_callback(console_t console, console_update_t * u) {
         }
         break;
     case CONSOLE_UPDATE_ROWS:
-        /*
-        printf("CONSOLE_UPDATE_ROWS: (%d,%d)x(%d,%d)\n", u->data.u_rows.x1, u->data.u_rows.y1, u->data.u_rows.x2, u->data.u_rows.y2);
-        fflush(stdout);
-        */
         break;
     case CONSOLE_UPDATE_SCROLL: {
             SDL_Rect src;
@@ -126,19 +121,58 @@ static void render_callback(console_t console, console_update_t * u) {
             SDL_UpdateRect(g_screenSurface, 0, 0, 0, 0);
         }
         break;
+    case CONSOLE_UPDATE_CURSOR_VISIBILITY: {
+            unsigned w = console_get_char_width(console);
+            unsigned h = console_get_char_height(console);
+            unsigned x = u->data.u_cursor.x * w;
+            unsigned y = u->data.u_cursor.y * h;
+            if(u->data.u_cursor.cursor_visible) {
+                render_cursor(console, g_screenSurface, x, y);
+            } else {
+                render_char(console,
+                            g_screenSurface,
+                            x,
+                            y,
+                            console_get_char_at(console,
+                                                u->data.u_cursor.x,
+                                                u->data.u_cursor.y));
+            }
+        }
+        break;
+    case CONSOLE_UPDATE_CURSOR_POSITION: {
+            unsigned w = console_get_char_width(console);
+            unsigned h = console_get_char_height(console);
+            unsigned x = u->data.u_cursor.x * w;
+            unsigned y = u->data.u_cursor.y * h;
+            render_char(console,
+                        g_screenSurface,
+                        x,
+                        y,
+                        console_get_char_at(console,
+                                            u->data.u_cursor.x,
+                                            u->data.u_cursor.y));
+            if(u->data.u_cursor.cursor_visible) {
+                render_cursor(console,
+                              g_screenSurface,
+                              console_get_x(console),
+                              console_get_y(console));
+            }
+        }
+        break;
     }
 }
 
 static void render(void) {
+#if 0
     static char c = 0;
     console_print_char(g_console, c++);
-#if 0
 #ifdef _DEBUG
     render_font_surface(g_console, g_screenSurface);
-#endif
 #endif
     //if(c>'z') c='A';
     //console_print_string(g_console, "Hello World! ");
     //SDL_UpdateRects(dst, 1, &drect);
+#endif
     SDL_UpdateRect(g_screenSurface, 0,0,0,0);
+    console_blink_cursor(g_console);
 }

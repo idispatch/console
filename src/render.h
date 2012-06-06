@@ -5,6 +5,7 @@
 
 void render_init(SDL_Surface * dst, console_t console);
 void render_done();
+void render_cursor(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y);
 void render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y, char c);
 void render_string(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y, char * str);
 Uint32 render_get_background_color(console_t console);

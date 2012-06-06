@@ -3,6 +3,9 @@
 #include <malloc.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 struct console {
     unsigned height;
@@ -14,17 +17,22 @@ struct console {
     unsigned char_height;
     unsigned char_width;
 
-    unsigned x;
-    unsigned y;
+    unsigned cursor_x;
+    unsigned cursor_y;
     unsigned char attribute;
 
     char * character_buffer;
     unsigned char * attribute_buffer;
 
+    unsigned char cursor_state;
+    unsigned cursor_blink_rate;
     console_rgb_t palette[16];
     unsigned char * font_bitmap;
     console_callback_t callback;
 };
+
+#define CURSOR_VISIBLE 1
+#define CURSOR_SHOWN 2
 
 /* http://en.wikipedia.org/wiki/ANSI_escape_code*/
 static console_rgb_t g_palette[] = {
@@ -58,6 +66,8 @@ console_t console_alloc(unsigned width, unsigned height) {
     console_set_callback(console, 0);
     console_set_palette(console, &g_palette[0]);
     console_set_font(console, FONT_8x8_SYSTEM);
+    console_set_cursor_blink_rate(console, 300);
+    console_show_cursor(console);
     console_clear(console);
     return console;
 }
@@ -67,6 +77,52 @@ void console_free(console_t console) {
         free(console->character_buffer);
         free(console->attribute_buffer);
         free(console);
+    }
+}
+
+void console_set_cursor_blink_rate(console_t console, unsigned rate) {
+    console->cursor_blink_rate = rate;
+}
+
+void console_show_cursor(console_t console) {
+    if(console->cursor_state & CURSOR_VISIBLE)
+        return;
+    console->cursor_state |= (CURSOR_VISIBLE | CURSOR_SHOWN);
+    console_update_t u;
+    u.type = CONSOLE_UPDATE_CURSOR_VISIBILITY;
+    u.data.u_cursor.cursor_visible = true;
+    u.data.u_cursor.x = console->cursor_x;
+    u.data.u_cursor.y = console->cursor_y;
+    console->callback(console, &u);
+}
+
+void console_hide_cursor(console_t console) {
+    if(!(console->cursor_state & CURSOR_VISIBLE))
+        return;
+    console->cursor_state &= ~(CURSOR_VISIBLE | CURSOR_SHOWN);
+    console_update_t u;
+    u.type = CONSOLE_UPDATE_CURSOR_VISIBILITY;
+    u.data.u_cursor.cursor_visible = false;
+    u.data.u_cursor.x = console->cursor_x;
+    u.data.u_cursor.y = console->cursor_y;
+    console->callback(console, &u);
+}
+
+void console_blink_cursor(console_t console) {
+    if(!(console->cursor_state & CURSOR_VISIBLE))
+        return; /* cursor hidden */
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    uint64_t x = (uint64_t)t.tv_sec * 1000 + (uint64_t)t.tv_nsec / 1000000;
+    unsigned char shown = (x % (console->cursor_blink_rate << 1)) < console->cursor_blink_rate;
+    if(shown != ((console->cursor_state & CURSOR_SHOWN) >> 1)) {
+        console->cursor_state ^= CURSOR_SHOWN;
+        console_update_t u;
+        u.type = CONSOLE_UPDATE_CURSOR_VISIBILITY;
+        u.data.u_cursor.cursor_visible = shown ? true : false;
+        u.data.u_cursor.x = console->cursor_x;
+        u.data.u_cursor.y = console->cursor_y;
+        console->callback(console, &u);
     }
 }
 
@@ -104,20 +160,19 @@ void console_set_font(console_t console, font_id_t font) {
     console->attribute_buffer = realloc(console->attribute_buffer, num_cells * sizeof(unsigned char));
 
     console_update_t u;
+    u.type = CONSOLE_UPDATE_FONT;
     u.data.u_font.char_width = console->char_width;
     u.data.u_font.char_height = console->char_height;
     u.data.u_font.font_bitmap = console->font_bitmap;
-    u.type = CONSOLE_UPDATE_FONT;
     console->callback(console, &u);
 }
 
 void console_clear(console_t console) {
-    console->x = 0;
-    console->y = 0;
+    console_goto_xy(console, 0, 0);
     console->attribute = 0xf;
-    unsigned n = console->height * console->width;
-    memset(console->character_buffer, 0, n);
-    memset(console->attribute_buffer, console->attribute, n);
+    unsigned bytes = console->height * console->width;
+    memset(console->character_buffer, 0, bytes);
+    memset(console->attribute_buffer, console->attribute, bytes);
     console_update_t u;
     u.type = CONSOLE_UPDATE_ROWS;
     u.data.u_rows.x1 = 0;
@@ -127,11 +182,21 @@ void console_clear(console_t console) {
     console->callback(console, &u);
 }
 
+void console_cursor_advance(console_t console) {
+    if(++console->cursor_x >= console->width) {
+        console->cursor_x = 0;
+        if(++console->cursor_y >= console->height) {
+            console->cursor_y = console->height-1;
+            console_scroll_lines(console, 1);
+        }
+    }
+}
+
 void console_print_char(console_t console, char c) {
     if(c == '\n') { /* New line */
-        console->x = 0;
-        if(++console->y >= console->height) {
-            console->y = console->height - 1;
+        console->cursor_x = 0;
+        if(++console->cursor_y >= console->height) {
+            console->cursor_y = console->height - 1;
             console_scroll_lines(console, 1);
         }
         return;
@@ -149,21 +214,15 @@ void console_print_char(console_t console, char c) {
     }*/
     console_update_t u;
     u.type = CONSOLE_UPDATE_CHAR;
-    u.data.u_char.x = console->x;
-    u.data.u_char.y = console->y;
+    u.data.u_char.x = console->cursor_x;
+    u.data.u_char.y = console->cursor_y;
     u.data.u_char.c = c;
     u.data.u_char.a = console->attribute;
-    size_t offset = console->y * console->width + console->x;
+    size_t offset = console->cursor_y * console->width + console->cursor_x;
     console->character_buffer[offset] = c;
     console->attribute_buffer[offset] = console->attribute;
     console->callback(console, &u);
-    if(++console->x >= console->width) {
-        console->x = 0;
-        if(++console->y >= console->height) {
-            console->y = console->height-1;
-            console_scroll_lines(console, 1);
-        }
-    }
+    console_cursor_advance(console);
 }
 
 void console_print_string(console_t console, const char * str) {
@@ -171,13 +230,13 @@ void console_print_string(console_t console, const char * str) {
         return;
     console_update_t u;
     u.type = CONSOLE_UPDATE_ROWS;
-    u.data.u_rows.x1 = console->x;
-    u.data.u_rows.y1 = console->y;
+    u.data.u_rows.x1 = console->cursor_x;
+    u.data.u_rows.y1 = console->cursor_y;
     do {
         console_print_char(console, *str++);
     } while(*str);
-    u.data.u_rows.x2 = console->x;
-    u.data.u_rows.y2 = console->y;
+    u.data.u_rows.x2 = console->cursor_x;
+    u.data.u_rows.y2 = console->cursor_y;
     console->callback(console, &u);
 }
 
@@ -190,8 +249,19 @@ void console_goto_xy(console_t console, unsigned x, unsigned y) {
         x = console->width - 1;
     if(y >= console->height)
         y = console->height - 1;
-    console->x = x;
-    console->y = y;
+    if(x==console->cursor_x && y==console->cursor_y)
+        return;
+
+    console_update_t u;
+    u.type = CONSOLE_UPDATE_CURSOR_POSITION;
+    u.data.u_cursor.cursor_visible = (console->cursor_state & 1) ? true : false;
+    u.data.u_cursor.x = console->cursor_x;
+    u.data.u_cursor.y = console->cursor_y;
+
+    console->cursor_x = x;
+    console->cursor_y = y;
+
+    console->callback(console, &u);
 }
 
 void console_scroll_lines(console_t console, unsigned n) {
@@ -240,11 +310,11 @@ unsigned console_get_char_height(console_t console) {
 }
 
 unsigned console_get_x(console_t console) {
-    return console->x;
+    return console->cursor_x;
 }
 
 unsigned console_get_y(console_t console) {
-    return console->y;
+    return console->cursor_y;
 }
 
 int console_get_char_at(console_t console, unsigned x, unsigned y) {
@@ -265,22 +335,6 @@ unsigned char console_get_background_color(console_t console) {
 
 unsigned char console_get_foreground_color(console_t console) {
     return console->attribute & 0xf;
-}
-
-void console_get_string_at(console_t console, unsigned x, unsigned y, char * buffer, size_t num_bytes) {
-    if(num_bytes < 1)
-        return;
-    if(x >= console->width || y >= console->height) {
-        buffer[0] = 0;
-    }
-    y = y * console->width;
-    unsigned w = console->width;
-    const char * src = &console->character_buffer[y + x];
-    num_bytes--; /* reserve for terminating zero */
-    for(;num_bytes > 0 && x < w && *src; --num_bytes, ++x) {
-        *buffer++ = *src++;
-    }
-    *buffer = 0;
 }
 
 void console_get_color_at(console_t console, unsigned x, unsigned y, console_rgb_t * foreground, console_rgb_t * background) {

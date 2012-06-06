@@ -1,6 +1,7 @@
 #include <SDL.h>
 #include "console.h"
 
+static Uint32 g_cursor_color;
 static Uint32 g_palette[CONSOLE_NUM_PALETTE_ENTRIES];
 static SDL_Surface * g_fontSurface = NULL;
 
@@ -62,6 +63,7 @@ void render_init(SDL_Surface * dst, console_t console){
     for(i=0; i<CONSOLE_NUM_PALETTE_ENTRIES; i++) {
         g_palette[i] = SDL_MapRGB(dst->format, rgb[i].r, rgb[i].g, rgb[i].b);
     }
+    g_cursor_color = SDL_MapRGB(dst->format, 255, 255, 255);
     render_init_font_surface(dst, console);
 }
 
@@ -71,6 +73,15 @@ void render_done() {
         g_fontSurface = NULL;
     }
     memset(g_palette, 0, sizeof(g_palette));
+}
+
+void render_cursor(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y) {
+    SDL_Rect d;
+    d.x = x;
+    d.y = y + console_get_char_height(console) - 2;
+    d.w = console_get_char_width(console);
+    d.h = 2;
+    SDL_FillRect(dst, &d, g_cursor_color);
 }
 
 void render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y, char c) {
