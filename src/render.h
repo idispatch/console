@@ -2,6 +2,7 @@
 #define RENDER_H_
 
 #include <SDL.h>
+#include "console.h"
 
 void render_init(SDL_Surface * dst, console_t console);
 void render_done();

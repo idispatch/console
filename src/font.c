@@ -31,4 +31,3 @@ const font_t console_fonts[] = {
         .font_bitmap = &console_font_8x16[0]
     }
 };
-

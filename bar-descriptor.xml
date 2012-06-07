@@ -50,7 +50,8 @@
     
     <!--  The category where the application appears. Either core.games or core.media. -->
     <asset path="icon.png">icon.png</asset>
-    <asset path="assets/donut.bmp">donut.bmp</asset>
+    <asset path="assets">assets</asset>
+    <asset path="sdl-controls.xml">sdl-controls.xml</asset>
     <configuration id="com.qnx.qcc.configuration.exe.debug.819259559" name="Device-Debug">
        <platformArchitecture>armle-v7</platformArchitecture>
        <asset path="Device-Debug/console" entry="true" type="Qnx/Elf">console</asset>

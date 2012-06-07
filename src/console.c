@@ -66,7 +66,7 @@ console_t console_alloc(unsigned width, unsigned height) {
     console_set_callback(console, 0);
     console_set_palette(console, &g_palette[0]);
     console_set_font(console, FONT_8x8_SYSTEM);
-    console_set_cursor_blink_rate(console, 300);
+    console_set_cursor_blink_rate(console, 200);
     console_show_cursor(console);
     console_clear(console);
     return console;
@@ -80,6 +80,10 @@ void console_free(console_t console) {
     }
 }
 
+bool console_cursor_is_visible(console_t console) {
+    return console->cursor_state & CURSOR_VISIBLE;
+}
+
 void console_set_cursor_blink_rate(console_t console, unsigned rate) {
     console->cursor_blink_rate = rate;
 }
@@ -87,7 +91,7 @@ void console_set_cursor_blink_rate(console_t console, unsigned rate) {
 void console_show_cursor(console_t console) {
     if(console->cursor_state & CURSOR_VISIBLE)
         return;
-    console->cursor_state |= (CURSOR_VISIBLE | CURSOR_SHOWN);
+    console->cursor_state |= CURSOR_VISIBLE;
     console_update_t u;
     u.type = CONSOLE_UPDATE_CURSOR_VISIBILITY;
     u.data.u_cursor.cursor_visible = true;
@@ -109,8 +113,8 @@ void console_hide_cursor(console_t console) {
 }
 
 void console_blink_cursor(console_t console) {
-    if(!(console->cursor_state & CURSOR_VISIBLE))
-        return; /* cursor hidden */
+    if(!console_cursor_is_visible(console))
+        return; /* cursor is not visible */
     struct timespec t;
     clock_gettime(CLOCK_MONOTONIC, &t);
     uint64_t x = (uint64_t)t.tv_sec * 1000 + (uint64_t)t.tv_nsec / 1000000;
@@ -168,9 +172,9 @@ void console_set_font(console_t console, font_id_t font) {
 }
 
 void console_clear(console_t console) {
-    console_goto_xy(console, 0, 0);
+    console_cursor_goto_xy(console, 0, 0);
     console->attribute = 0xf;
-    unsigned bytes = console->height * console->width;
+    size_t bytes = console->height * console->width;
     memset(console->character_buffer, 0, bytes);
     memset(console->attribute_buffer, console->attribute, bytes);
     console_update_t u;
@@ -182,23 +186,28 @@ void console_clear(console_t console) {
     console->callback(console, &u);
 }
 
-void console_cursor_advance(console_t console) {
-    if(++console->cursor_x >= console->width) {
-        console->cursor_x = 0;
-        if(++console->cursor_y >= console->height) {
-            console->cursor_y = console->height-1;
+static void console_cursor_advance(console_t console) {
+    unsigned x = console->cursor_x;
+    unsigned y = console->cursor_y;
+    if(++x >= console->width) {
+        x = 0;
+        if(++y >= console->height) {
+            y = console->height-1;
             console_scroll_lines(console, 1);
         }
     }
+    console_cursor_goto_xy(console, x, y);
 }
 
 void console_print_char(console_t console, char c) {
-    if(c == '\n') { /* New line */
-        console->cursor_x = 0;
-        if(++console->cursor_y >= console->height) {
-            console->cursor_y = console->height - 1;
+    if(c == '\n') {
+        unsigned x = 0;
+        unsigned y = console->cursor_y;
+        if(++y >= console->height) {
+            y = console->height - 1;
             console_scroll_lines(console, 1);
         }
+        console_cursor_goto_xy(console, x, y);
         return;
     }
     /*if(c == '\t') {
@@ -244,7 +253,7 @@ void console_set_attr(console_t console, unsigned char attr) {
     console->attribute = attr;
 }
 
-void console_goto_xy(console_t console, unsigned x, unsigned y) {
+void console_cursor_goto_xy(console_t console, unsigned x, unsigned y) {
     if(x >= console->width)
         x = console->width - 1;
     if(y >= console->height)
@@ -254,7 +263,8 @@ void console_goto_xy(console_t console, unsigned x, unsigned y) {
 
     console_update_t u;
     u.type = CONSOLE_UPDATE_CURSOR_POSITION;
-    u.data.u_cursor.cursor_visible = (console->cursor_state & 1) ? true : false;
+    u.data.u_cursor.cursor_visible =
+        ((console->cursor_state & (CURSOR_VISIBLE | CURSOR_SHOWN)) == (CURSOR_VISIBLE | CURSOR_SHOWN)) ? true : false;
     u.data.u_cursor.x = console->cursor_x;
     u.data.u_cursor.y = console->cursor_y;
 
@@ -309,11 +319,11 @@ unsigned console_get_char_height(console_t console) {
     return console->char_height;
 }
 
-unsigned console_get_x(console_t console) {
+unsigned console_get_cursor_x(console_t console) {
     return console->cursor_x;
 }
 
-unsigned console_get_y(console_t console) {
+unsigned console_get_cursor_y(console_t console) {
     return console->cursor_y;
 }
 
@@ -323,7 +333,7 @@ int console_get_char_at(console_t console, unsigned x, unsigned y) {
     return console->character_buffer[y * console->width + x];
 }
 
-unsigned char console_get_attr_at(console_t console, unsigned x, unsigned y) {
+unsigned char console_get_attribute_at(console_t console, unsigned x, unsigned y) {
     if(x >= console->width || y >= console->height)
         return 0xf;
     return console->attribute_buffer[y * console->width + x];
@@ -335,18 +345,6 @@ unsigned char console_get_background_color(console_t console) {
 
 unsigned char console_get_foreground_color(console_t console) {
     return console->attribute & 0xf;
-}
-
-void console_get_color_at(console_t console, unsigned x, unsigned y, console_rgb_t * foreground, console_rgb_t * background) {
-    unsigned char attr = console_get_attr_at(console, x, y);
-    console_rgb_t const * f = &console->palette[attr & 0x0f];
-    console_rgb_t const * b = &console->palette[(attr & 0xf0) >> 4];
-    foreground->r = f->r;
-    foreground->g = f->g;
-    foreground->b = f->b;
-    background->r = b->r;
-    background->g = b->g;
-    background->b = b->b;
 }
 
 unsigned char * console_get_char_bitmap(console_t console, unsigned char c) {

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<emulation version="1">
+  <key x="686" y="480" width="80" height="87" sym="276" scancode="276" image="assets/button-left.png">
+    <label x="0" y="0" width="80" height="87" image="assets/button-left.png"/>
+  </key>
+  <key x="768" y="480" width="80" height="87" sym="274" scancode="274" image="assets/button-down.png">
+    <label x="0" y="0" width="80" height="87" image="assets/button-down.png"/>
+  </key>
+  <key x="768" y="390" width="80" height="87" sym="273" scancode="273" image="assets/button-up.png">
+    <label x="0" y="0" width="80" height="87" image="assets/button-up.png"/>
+  </key>
+  <key x="850" y="480" width="80" height="87" sym="275" scancode="275" image="assets/button-right.png">
+    <label x="0" y="0" width="80" height="87" image="assets/button-right.png"/>
+  </key>
+</emulation>

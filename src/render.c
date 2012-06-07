@@ -1,4 +1,5 @@
 #include <SDL.h>
+#include "render.h"
 #include "console.h"
 
 static Uint32 g_cursor_color;
@@ -77,8 +78,8 @@ void render_done() {
 
 void render_cursor(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y) {
     SDL_Rect d;
-    d.x = x;
-    d.y = y + console_get_char_height(console) - 2;
+    d.x = x * console_get_char_width(console);
+    d.y = (y + 1) * console_get_char_height(console) - 3;
     d.w = console_get_char_width(console);
     d.h = 2;
     SDL_FillRect(dst, &d, g_cursor_color);
@@ -88,11 +89,11 @@ void render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y, char 
     SDL_Rect srect;
     SDL_Rect drect;
     unsigned w = srect.w = drect.w = console_get_char_width(console);
-    srect.h = drect.h = console_get_char_height(console);
+    unsigned h = srect.h = drect.h = console_get_char_height(console);
     srect.x = ((unsigned char)c % 16) * w;
-    srect.y = ((unsigned char)c / 16) * srect.h;
-    drect.x = x;
-    drect.y = y;
+    srect.y = ((unsigned char)c / 16) * h;
+    drect.x = x * w;
+    drect.y = y * h;
     SDL_BlitSurface(g_fontSurface, &srect, dst, &drect);
 }
 
@@ -100,14 +101,14 @@ void render_string(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y, cha
     SDL_Rect srect;
     SDL_Rect drect;
     unsigned w = srect.w = drect.w = console_get_char_width(console);
-    srect.h = drect.h = console_get_char_height(console);
-    drect.y = y;
+    unsigned h = srect.h = drect.h = console_get_char_height(console);
+    drect.y = y * h;
     int n;
     for(n = 0; *str; ++str, ++n) {
         unsigned char c = (unsigned char)*str;
         srect.x = (c % 16) * w;
         srect.y = (c / 16) * w;
-        drect.x = n * w;
+        drect.x = (n + x) * w;
         SDL_BlitSurface(g_fontSurface, &srect, dst, &drect);
     }
 }

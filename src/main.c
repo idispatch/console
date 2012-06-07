@@ -20,22 +20,60 @@ static void render_callback(console_t console, console_update_t * u);
 
 int main(int argc, char *argv[]) {
     init();
-
     bool bDone = false;
-
     while (bDone == false) {
         SDL_Event event;
-
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT)
+            switch(event.type) {
+            case SDL_QUIT:
                 bDone = true;
+                break;
+            case SDL_KEYDOWN:
+                if(isascii(event.key.keysym.unicode) &&
+                   isprint(event.key.keysym.unicode & 0xff)) {
+                    console_print_char(g_console, (char)(event.key.keysym.unicode & 0xff));
+                } else {
+                    switch(event.key.keysym.sym) {
+                    case SDLK_LEFT: {
+                            unsigned x = console_get_cursor_x(g_console);
+                            if(x > 0)
+                                --x;
+                            console_cursor_goto_xy(g_console, x, console_get_cursor_y(g_console));
+                        }
+                        break;
+                    case SDLK_DOWN:{
+                            unsigned y = console_get_cursor_y(g_console);
+                            if(y < console_get_height(g_console))
+                                ++y;
+                            console_cursor_goto_xy(g_console, console_get_cursor_x(g_console), y);
+                        }
+                        break;
+                    case SDLK_UP:{
+                            unsigned y = console_get_cursor_y(g_console);
+                            if(y > 0)
+                                --y;
+                            console_cursor_goto_xy(g_console, console_get_cursor_x(g_console), y);
+                        }
+                        break;
+                    case SDLK_RIGHT: {
+                            unsigned x = console_get_cursor_x(g_console);
+                            if(x < console_get_width(g_console))
+                                ++x;
+                            console_cursor_goto_xy(g_console, x, console_get_cursor_y(g_console));
+                        }
+                        break;
+                    case SDLK_RETURN:
+                        console_print_char(g_console, '\n');
+                        break;
+                    }
+                    break;
+                }
+                break;
+            }
         }
-
         render();
     }
-
     shutDown();
-
     return 0;
 }
 
@@ -56,12 +94,13 @@ static void init() {
         exit(1);
     }
 
+    SDL_ShowCursor(0);
+
     g_console = console_alloc(SCREEN_WIDTH, SCREEN_HEIGHT);
     console_set_font(g_console, FONT_8x16);
     render_init(g_screenSurface, g_console);
     console_set_callback(g_console, render_callback);
     console_clear(g_console);
-    console_print_string(g_console, "Hello World!\n0123456789");
 }
 
 static void shutDown() {
@@ -71,32 +110,14 @@ static void shutDown() {
     SDL_FreeSurface(g_screenSurface);
     SDL_Quit();
 }
-/*
-static Uint32 timeLeft(void) {
-    static Uint32 timeToNextUpdate = 0;
-    Uint32 currentTime;
 
-    currentTime = SDL_GetTicks();
-
-    if (timeToNextUpdate <= currentTime) {
-        timeToNextUpdate = currentTime + UPDATE_INTERVAL;
-        return 0;
-    }
-
-    return (timeToNextUpdate - currentTime);
-}
-*/
 static void render_callback(console_t console, console_update_t * u) {
     switch(u->type) {
     case CONSOLE_UPDATE_CHAR: {
-            unsigned w = console_get_char_width(console);
-            unsigned h = console_get_char_height(console);
-            unsigned x = u->data.u_char.x * w;
-            unsigned y = u->data.u_char.y * h;
             render_char(console,
                         g_screenSurface,
-                        x,
-                        y,
+                        u->data.u_char.x,
+                        u->data.u_char.y,
                         u->data.u_char.c);
         }
         break;
@@ -122,17 +143,16 @@ static void render_callback(console_t console, console_update_t * u) {
         }
         break;
     case CONSOLE_UPDATE_CURSOR_VISIBILITY: {
-            unsigned w = console_get_char_width(console);
-            unsigned h = console_get_char_height(console);
-            unsigned x = u->data.u_cursor.x * w;
-            unsigned y = u->data.u_cursor.y * h;
             if(u->data.u_cursor.cursor_visible) {
-                render_cursor(console, g_screenSurface, x, y);
+                render_cursor(console,
+                              g_screenSurface,
+                              u->data.u_cursor.x,
+                              u->data.u_cursor.y);
             } else {
                 render_char(console,
                             g_screenSurface,
-                            x,
-                            y,
+                            u->data.u_cursor.x,
+                            u->data.u_cursor.y,
                             console_get_char_at(console,
                                                 u->data.u_cursor.x,
                                                 u->data.u_cursor.y));
@@ -140,22 +160,18 @@ static void render_callback(console_t console, console_update_t * u) {
         }
         break;
     case CONSOLE_UPDATE_CURSOR_POSITION: {
-            unsigned w = console_get_char_width(console);
-            unsigned h = console_get_char_height(console);
-            unsigned x = u->data.u_cursor.x * w;
-            unsigned y = u->data.u_cursor.y * h;
             render_char(console,
                         g_screenSurface,
-                        x,
-                        y,
+                        u->data.u_cursor.x,
+                        u->data.u_cursor.y,
                         console_get_char_at(console,
                                             u->data.u_cursor.x,
                                             u->data.u_cursor.y));
             if(u->data.u_cursor.cursor_visible) {
                 render_cursor(console,
                               g_screenSurface,
-                              console_get_x(console),
-                              console_get_y(console));
+                              console_get_cursor_x(console),
+                              console_get_cursor_y(console));
             }
         }
         break;
@@ -163,16 +179,6 @@ static void render_callback(console_t console, console_update_t * u) {
 }
 
 static void render(void) {
-#if 0
-    static char c = 0;
-    console_print_char(g_console, c++);
-#ifdef _DEBUG
-    render_font_surface(g_console, g_screenSurface);
-#endif
-    //if(c>'z') c='A';
-    //console_print_string(g_console, "Hello World! ");
-    //SDL_UpdateRects(dst, 1, &drect);
-#endif
-    SDL_UpdateRect(g_screenSurface, 0,0,0,0);
     console_blink_cursor(g_console);
+    SDL_UpdateRect(g_screenSurface, 0,0,0,0);
 }
