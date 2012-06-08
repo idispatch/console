@@ -16,11 +16,11 @@ static const int SCREEN_BPP = 32;
 static void init();
 static void shutDown();
 static void render();
-static void render_callback(console_t console, console_update_t * u);
 
 int main(int argc, char *argv[]) {
     init();
     bool bDone = false;
+    console_print_string(g_console, "0123456789");
     while (bDone == false) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -31,7 +31,9 @@ int main(int argc, char *argv[]) {
             case SDL_KEYDOWN:
                 if(isascii(event.key.keysym.unicode) &&
                    isprint(event.key.keysym.unicode & 0xff)) {
+                    static unsigned char c = 0;
                     console_print_char(g_console, (char)(event.key.keysym.unicode & 0xff));
+                    console_set_attribute(g_console, c++);
                 } else {
                     switch(event.key.keysym.sym) {
                     case SDLK_LEFT: {
@@ -98,84 +100,18 @@ static void init() {
 
     g_console = console_alloc(SCREEN_WIDTH, SCREEN_HEIGHT);
     console_set_font(g_console, FONT_8x16);
-    render_init(g_screenSurface, g_console);
-    console_set_callback(g_console, render_callback);
+    render_init(g_console, g_screenSurface);
+    console_set_callback(g_console, console_render_callback, g_screenSurface);
     console_clear(g_console);
+    console_set_attribute(g_console, 1);
 }
 
 static void shutDown() {
     render_done();
-    console_set_callback(g_console, 0);
+    console_set_callback(g_console, NULL, NULL);
     console_free(g_console);
     SDL_FreeSurface(g_screenSurface);
     SDL_Quit();
-}
-
-static void render_callback(console_t console, console_update_t * u) {
-    switch(u->type) {
-    case CONSOLE_UPDATE_CHAR: {
-            render_char(console,
-                        g_screenSurface,
-                        u->data.u_char.x,
-                        u->data.u_char.y,
-                        u->data.u_char.c);
-        }
-        break;
-    case CONSOLE_UPDATE_ROWS:
-        break;
-    case CONSOLE_UPDATE_SCROLL: {
-            SDL_Rect src;
-            SDL_Rect dst;
-            unsigned sw = console_get_width(console);
-            unsigned sh = console_get_height(console);
-            unsigned w = console_get_char_width(console);
-            unsigned h = console_get_char_height(console);
-            src.x = dst.x = 0;
-            src.w = dst.w = w * sw;
-            src.h = dst.h = u->data.u_scroll.n * h;
-            src.y = u->data.u_scroll.y2 * h;
-            dst.y = u->data.u_scroll.y1 * h;
-            SDL_BlitSurface(g_screenSurface, &src, g_screenSurface, &dst);
-            dst.y = (sh * h) - (console_get_height(console) - u->data.u_scroll.n) * h;
-            dst.h = (u->data.u_scroll.y2 - u->data.u_scroll.y1) * h;
-            SDL_FillRect(g_screenSurface, &dst, render_get_background_color(console));
-            SDL_UpdateRect(g_screenSurface, 0, 0, 0, 0);
-        }
-        break;
-    case CONSOLE_UPDATE_CURSOR_VISIBILITY: {
-            if(u->data.u_cursor.cursor_visible) {
-                render_cursor(console,
-                              g_screenSurface,
-                              u->data.u_cursor.x,
-                              u->data.u_cursor.y);
-            } else {
-                render_char(console,
-                            g_screenSurface,
-                            u->data.u_cursor.x,
-                            u->data.u_cursor.y,
-                            console_get_char_at(console,
-                                                u->data.u_cursor.x,
-                                                u->data.u_cursor.y));
-            }
-        }
-        break;
-    case CONSOLE_UPDATE_CURSOR_POSITION: {
-            render_char(console,
-                        g_screenSurface,
-                        u->data.u_cursor.x,
-                        u->data.u_cursor.y,
-                        console_get_char_at(console,
-                                            u->data.u_cursor.x,
-                                            u->data.u_cursor.y));
-            if(u->data.u_cursor.cursor_visible) {
-                render_cursor(console,
-                              g_screenSurface,
-                              console_get_cursor_x(console),
-                              console_get_cursor_y(console));
-            }
-        }
-        break;
-    }
 }
 
 static void render(void) {

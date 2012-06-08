@@ -58,7 +58,7 @@ typedef struct {
 
 struct console;
 typedef struct console * console_t;
-typedef void (*console_callback_t)(console_t console, console_update_t * p);
+typedef void (*console_callback_t)(console_t console, console_update_t * p, void * data);
 
 #define CONSOLE_NUM_PALETTE_ENTRIES 16
 
@@ -71,10 +71,15 @@ typedef enum {
 console_t console_alloc(unsigned width, unsigned height);
 void console_free(console_t console);
 void console_clear(console_t console);
+void console_set_tab_width(console_t console, unsigned width);
+unsigned console_get_tab_width(console_t console);
 void console_print_char(console_t console, char c);
 void console_print_string(console_t console, const char * str);
 void console_cursor_goto_xy(console_t console, unsigned x, unsigned y);
+void console_save_cursor_position(console_t console);
+void console_restore_cursor_position(console_t console);
 bool console_cursor_is_visible(console_t console);
+bool console_cursor_is_shown(console_t console);
 void console_scroll_lines(console_t console, unsigned n);
 unsigned console_get_width(console_t console);
 unsigned console_get_height(console_t console);
@@ -82,7 +87,8 @@ unsigned console_get_char_width(console_t console);
 unsigned console_get_char_height(console_t console);
 unsigned console_get_cursor_x(console_t console);
 unsigned console_get_cursor_y(console_t console);
-int console_get_char_at(console_t console, unsigned x, unsigned y);
+int console_get_character_at(console_t console, unsigned x, unsigned y);
+void console_set_attribute(console_t console, unsigned char attr);
 unsigned char console_get_attribute_at(console_t console, unsigned x, unsigned y);
 unsigned char console_get_background_color(console_t console);
 unsigned char console_get_foreground_color(console_t console);
@@ -90,8 +96,9 @@ void console_set_palette(console_t console, console_rgb_t const * palette);
 void console_get_palette(console_t console, console_rgb_t * palette);
 void console_set_font(console_t console, font_id_t font);
 unsigned char * console_get_char_bitmap(console_t console, unsigned char c);
-void console_set_callback(console_t console, console_callback_t callback);
+void console_set_callback(console_t console, console_callback_t callback, void * data);
 void console_set_cursor_blink_rate(console_t console, unsigned rate);
+unsigned console_get_cursor_blink_rate(console_t console);
 void console_blink_cursor(console_t console);
 void console_show_cursor(console_t console);
 void console_hide_cursor(console_t console);
