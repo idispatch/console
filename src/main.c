@@ -85,10 +85,11 @@ static void init() {
         exit(1);
     }
 
+    Uint32 flags = SDL_HWSURFACE | SDL_FULLSCREEN | SDL_NOFRAME | SDL_DOUBLEBUF;
     g_screenSurface = SDL_SetVideoMode(SCREEN_WIDTH,
                                        SCREEN_HEIGHT,
                                        SCREEN_BPP,
-                                       SDL_HWSURFACE | SDL_FULLSCREEN | SDL_NOFRAME);
+                                       flags);
 
     if (g_screenSurface == NULL) {
         printf("Unable to set %dx%dx%d video: %s\n",
@@ -116,5 +117,5 @@ static void shutDown() {
 
 static void render(void) {
     console_blink_cursor(g_console);
-    SDL_UpdateRect(g_screenSurface, 0,0,0,0);
+    SDL_Flip(g_screenSurface);
 }

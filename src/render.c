@@ -265,7 +265,7 @@ void console_render_callback(console_t console, console_update_t * u, void * dat
         }
         break;
     case CONSOLE_UPDATE_CURSOR_VISIBILITY:
-        /*if(u->data.u_cursor.cursor_visible) {
+        if(u->data.u_cursor.cursor_visible) {
             render_cursor(console,
                           screen,
                           console_get_cursor_x(console),
@@ -275,10 +275,13 @@ void console_render_callback(console_t console, console_update_t * u, void * dat
                         screen,
                         console_get_cursor_x(console),
                         console_get_cursor_y(console),
-                        console_get_char_at(console,
-                                            console_get_cursor_x(console),
-                                            console_get_cursor_y(console)));
-        }*/
+                        console_get_character_at(console,
+                                                 console_get_cursor_x(console),
+                                                 console_get_cursor_y(console)),
+                        console_get_attribute_at(console,
+                                                 console_get_cursor_x(console),
+                                                 console_get_cursor_y(console)));
+        }
         break;
     case CONSOLE_UPDATE_CURSOR_POSITION:
         fprintf(stdout, "CONSOLE_UPDATE_CURSOR_POSITION: [%d,%d->%d,%d]=%d\n",
