@@ -194,23 +194,6 @@ static void render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y
     render_char_bitmap(console, dst, x, y, c, a);
 #endif
 }
-/*
-static void render_string(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y, char * str) {
-    SDL_Rect srect;
-    SDL_Rect drect;
-    unsigned char_width = srect.w = drect.w = console_get_char_width(console);
-    unsigned char_height = srect.h = drect.h = console_get_char_height(console);
-    drect.y = y * char_height;
-    int n;
-    for(n = 0; *str; ++str, ++n) {
-        unsigned char c = (unsigned char)*str;
-        srect.x = (c % 16) * char_width;
-        srect.y = (c / 16) * char_height;
-        drect.x = (n + x) * char_width;
-        SDL_BlitSurface(g_fontSurface, &srect, dst, &drect);
-    }
-}
-*/
 
 #ifdef _DEBUG
 #if 0
