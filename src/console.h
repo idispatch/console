@@ -75,6 +75,7 @@ typedef enum {
 console_t console_alloc(unsigned width, unsigned height);
 void console_free(console_t console);
 void console_clear(console_t console);
+unsigned short * console_get_raw_buffer(console_t console);
 void console_set_tab_width(console_t console, unsigned width);
 unsigned console_get_tab_width(console_t console);
 void console_print_char(console_t console, unsigned char c);

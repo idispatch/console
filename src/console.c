@@ -7,6 +7,16 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+struct cell {
+    union {
+        struct {
+            unsigned char character;
+            unsigned char attribute;
+        } cell;
+        unsigned short cell_data;
+    };
+};
+
 struct console {
     unsigned height;
     unsigned width;
@@ -23,8 +33,7 @@ struct console {
     unsigned saved_cursor_y;
     unsigned char attribute;
 
-    unsigned char * character_buffer;
-    unsigned char * attribute_buffer;
+    struct cell * buffer;
 
     unsigned tab_width;
     unsigned char cursor_state;
@@ -80,10 +89,13 @@ console_t console_alloc(unsigned width, unsigned height) {
 void console_free(console_t console) {
     if(console) {
         console->callback_data = NULL;
-        free(console->character_buffer);
-        free(console->attribute_buffer);
+        free(console->buffer);
         free(console);
     }
+}
+
+unsigned short * console_get_raw_buffer(console_t console) {
+    return (unsigned short*)console->buffer;
 }
 
 void console_save_cursor_position(console_t console) {
@@ -194,8 +206,7 @@ void console_set_font(console_t console, font_id_t font) {
     console->height = console->view_height / console->char_height;
 
     size_t num_cells = console->width * console->height;
-    console->character_buffer = realloc(console->character_buffer, num_cells * sizeof(char));
-    console->attribute_buffer = realloc(console->attribute_buffer, num_cells * sizeof(unsigned char));
+    console->buffer = realloc(console->buffer, num_cells * sizeof(struct cell));
 
     console_update_t u;
     u.type = CONSOLE_UPDATE_FONT;
@@ -218,9 +229,10 @@ static void console_update_rows(console_t console, unsigned x1, unsigned y1, uns
 void console_clear(console_t console) {
     console_cursor_goto_xy(console, 0, 0);
     console->attribute = 0xf;
-    size_t bytes = console->height * console->width;
-    memset(console->character_buffer, 0, bytes);
-    memset(console->attribute_buffer, console->attribute, bytes);
+    unsigned x = console->width * console->height;
+    struct cell * buffer = console->buffer;
+    for(;x > 0; --x, ++buffer)
+        buffer->cell_data = 0x7;
     console_update_rows(console, 0, 0, console->width, console->height);
 }
 
@@ -255,15 +267,10 @@ void console_print_char(console_t console, unsigned char c) {
         }
         return;
     }
-    /*
-    if(c == '\f') {
-        console_scroll_lines(console, console->height);
-        return;
-    }*/
 
     size_t offset = console->cursor_y * console->width + console->cursor_x;
-    console->character_buffer[offset] = c;
-    console->attribute_buffer[offset] = console->attribute;
+    console->buffer[offset].cell.character = c;
+    console->buffer[offset].cell.attribute = console->attribute;
 
     console_update_t u;
     u.type = CONSOLE_UPDATE_CHAR;
@@ -293,8 +300,8 @@ void console_set_attribute(console_t console, unsigned char attr) {
 
 void console_set_character_and_attribute_at(console_t console, unsigned x, unsigned y, unsigned char c, unsigned char attr) {
     size_t offset = y * console->width + x;
-    console->character_buffer[offset] = c;
-    console->attribute_buffer[offset] = attr;
+    console->buffer[offset].cell.character = c;
+    console->buffer[offset].cell.attribute = attr;
 
     console_update_t u;
     u.type = CONSOLE_UPDATE_CHAR;
@@ -306,8 +313,8 @@ void console_set_character_and_attribute_at(console_t console, unsigned x, unsig
 }
 
 void console_set_character_and_attribute_at_offset(console_t console, unsigned offset, unsigned char c, unsigned char attr) {
-    console->character_buffer[offset] = c;
-    console->attribute_buffer[offset] = attr;
+    console->buffer[offset].cell.character = c;
+    console->buffer[offset].cell.attribute = attr;
 
     console_update_t u;
     u.type = CONSOLE_UPDATE_CHAR;
@@ -360,19 +367,24 @@ void console_scroll_lines(console_t console, unsigned n) {
 
     unsigned offset = n * w;
     if(n < console->height) {
-        int bytes = (console->height - n) * w;
-        memmove(console->character_buffer, console->character_buffer + offset, bytes);
-        memmove(console->attribute_buffer, console->attribute_buffer + offset, bytes);
+        size_t bytes = (console->height - n) * w * sizeof(unsigned short);
+        memmove(console->buffer, console->buffer + offset, bytes);
     }
     if(n < h) {
         offset = (h - n) * w;
         n = n * w;
-        memset(console->character_buffer + offset, 0, n);
-        memset(console->attribute_buffer + offset, console->attribute, n);
+        struct cell * buffer = console->buffer + offset;
+        for(; n > 0; --n, ++buffer) {
+            buffer->cell.character = 0;
+            buffer->cell.attribute = console->attribute;
+        }
     } else {
         n = h * w;
-        memset(console->character_buffer, 0, n);
-        memset(console->attribute_buffer, console->attribute, n);
+        struct cell * buffer = console->buffer;
+        for(; n > 0; --n, ++buffer) {
+            buffer->cell.character = 0;
+            buffer->cell.attribute = console->attribute;
+        }
     }
 
     u.type = CONSOLE_UPDATE_CURSOR_VISIBILITY;
@@ -409,21 +421,19 @@ unsigned console_get_cursor_y(console_t console) {
 unsigned char console_get_character_at(console_t console, unsigned x, unsigned y) {
     if(x >= console->width || y >= console->height)
         return 0;
-    return console->character_buffer[y * console->width + x];
+    return console->buffer[y * console->width + x].cell.character;
 }
 
 unsigned char console_get_character_at_offset(console_t console, unsigned offset) {
-    return console->character_buffer[offset];
+    return console->buffer[offset].cell.character;
 }
 
 unsigned char console_get_attribute_at(console_t console, unsigned x, unsigned y) {
-    if(x >= console->width || y >= console->height)
-        return 0xf;
-    return console->attribute_buffer[y * console->width + x];
+    return console->buffer[y * console->width + x].cell.attribute;
 }
 
 unsigned char console_get_attribute_at_offset(console_t console, unsigned offset) {
-    return console->attribute_buffer[offset];
+    return console->buffer[offset].cell.attribute;
 }
 
 unsigned char console_get_background_color(console_t console) {
