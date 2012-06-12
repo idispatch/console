@@ -23,7 +23,7 @@ struct console {
     unsigned saved_cursor_y;
     unsigned char attribute;
 
-    char * character_buffer;
+    unsigned char * character_buffer;
     unsigned char * attribute_buffer;
 
     unsigned tab_width;
@@ -237,7 +237,7 @@ static void console_cursor_advance(console_t console) {
     console_cursor_goto_xy(console, x, y);
 }
 
-void console_print_char(console_t console, char c) {
+void console_print_char(console_t console, unsigned char c) {
     if(c == '\n') {
         unsigned x = 0;
         unsigned y = console->cursor_y;
@@ -276,7 +276,7 @@ void console_print_char(console_t console, char c) {
     console_cursor_advance(console);
 }
 
-void console_print_string(console_t console, const char * str) {
+void console_print_string(console_t console, const unsigned char * str) {
     if(!str || !*str)
         return;
     unsigned x1 = console->cursor_x;
@@ -289,6 +289,33 @@ void console_print_string(console_t console, const char * str) {
 
 void console_set_attribute(console_t console, unsigned char attr) {
     console->attribute = attr;
+}
+
+void console_set_character_and_attribute_at(console_t console, unsigned x, unsigned y, unsigned char c, unsigned char attr) {
+    size_t offset = y * console->width + x;
+    console->character_buffer[offset] = c;
+    console->attribute_buffer[offset] = attr;
+
+    console_update_t u;
+    u.type = CONSOLE_UPDATE_CHAR;
+    u.data.u_char.x = x;
+    u.data.u_char.y = y;
+    u.data.u_char.c = c;
+    u.data.u_char.a = attr;
+    console->callback(console, &u, console->callback_data);
+}
+
+void console_set_character_and_attribute_at_offset(console_t console, unsigned offset, unsigned char c, unsigned char attr) {
+    console->character_buffer[offset] = c;
+    console->attribute_buffer[offset] = attr;
+
+    console_update_t u;
+    u.type = CONSOLE_UPDATE_CHAR;
+    u.data.u_char.x = offset % console->width;
+    u.data.u_char.y = offset / console->width;
+    u.data.u_char.c = c;
+    u.data.u_char.a = attr;
+    console->callback(console, &u, console->callback_data);
 }
 
 void console_cursor_goto_xy(console_t console, unsigned x, unsigned y) {
@@ -379,16 +406,24 @@ unsigned console_get_cursor_y(console_t console) {
     return console->cursor_y;
 }
 
-int console_get_character_at(console_t console, unsigned x, unsigned y) {
+unsigned char console_get_character_at(console_t console, unsigned x, unsigned y) {
     if(x >= console->width || y >= console->height)
         return 0;
     return console->character_buffer[y * console->width + x];
+}
+
+unsigned char console_get_character_at_offset(console_t console, unsigned offset) {
+    return console->character_buffer[offset];
 }
 
 unsigned char console_get_attribute_at(console_t console, unsigned x, unsigned y) {
     if(x >= console->width || y >= console->height)
         return 0xf;
     return console->attribute_buffer[y * console->width + x];
+}
+
+unsigned char console_get_attribute_at_offset(console_t console, unsigned offset) {
+    return console->attribute_buffer[offset];
 }
 
 unsigned char console_get_background_color(console_t console) {

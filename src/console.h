@@ -4,6 +4,10 @@
 #include <sys/types.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
     unsigned char r;
     unsigned char g;
@@ -26,7 +30,7 @@ typedef struct {
         struct {
             unsigned x;
             unsigned y;
-            char c;
+            unsigned char c;
             unsigned char a;
         } u_char;
         struct {
@@ -73,8 +77,8 @@ void console_free(console_t console);
 void console_clear(console_t console);
 void console_set_tab_width(console_t console, unsigned width);
 unsigned console_get_tab_width(console_t console);
-void console_print_char(console_t console, char c);
-void console_print_string(console_t console, const char * str);
+void console_print_char(console_t console, unsigned char c);
+void console_print_string(console_t console, const unsigned char * str);
 void console_cursor_goto_xy(console_t console, unsigned x, unsigned y);
 void console_save_cursor_position(console_t console);
 void console_restore_cursor_position(console_t console);
@@ -87,9 +91,13 @@ unsigned console_get_char_width(console_t console);
 unsigned console_get_char_height(console_t console);
 unsigned console_get_cursor_x(console_t console);
 unsigned console_get_cursor_y(console_t console);
-int console_get_character_at(console_t console, unsigned x, unsigned y);
+unsigned char console_get_character_at(console_t console, unsigned x, unsigned y);
+unsigned char console_get_character_at_offset(console_t console, unsigned offset);
 void console_set_attribute(console_t console, unsigned char attr);
+void console_set_character_and_attribute_at(console_t console, unsigned x, unsigned y, unsigned char c, unsigned char attr);
+void console_set_character_and_attribute_at_offset(console_t console, unsigned offset, unsigned char c, unsigned char attr);
 unsigned char console_get_attribute_at(console_t console, unsigned x, unsigned y);
+unsigned char console_get_attribute_at_offset(console_t console, unsigned offset);
 unsigned char console_get_background_color(console_t console);
 unsigned char console_get_foreground_color(console_t console);
 void console_set_palette(console_t console, console_rgb_t const * palette);
@@ -102,5 +110,9 @@ unsigned console_get_cursor_blink_rate(console_t console);
 void console_blink_cursor(console_t console);
 void console_show_cursor(console_t console);
 void console_hide_cursor(console_t console);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* CONSOLE_H_ */
