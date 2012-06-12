@@ -50,23 +50,23 @@ struct console {
 /* http://en.wikipedia.org/wiki/ANSI_escape_code*/
 static console_rgb_t g_palette[] = {
     /* normal */
-    {0,   0,   0}, /* black */
-    {128, 0,   0}, /* red */
-    {0,   128, 0}, /* green */
-    {128, 128, 0}, /* yellow */
-    {0,   0,   128}, /* blue */
-    {128, 0,   128}, /* magenta */
-    {0,   128, 128}, /* cyan */
-    {192, 192, 192}, /* gray */
+    {0x00, 0x00, 0x00},    /* 0  black */
+    {0x00, 0x00, 0xAA},    /* 1  blue */
+    {0x00, 0xAA, 0x00},    /* 2  green */
+    {0x00, 0xAA, 0xAA},    /* 3  cyan */
+    {0xAA, 0x00, 0x00},    /* 4  red */
+    {0xAA, 0x00, 0xAA},    /* 5  magenta */
+    {0xAA, 0x55, 0x00},    /* 6  brown */
+    {0xAA, 0xAA, 0xAA},    /* 7  light gray */
     /* bright */
-    {128, 128, 128}, /* dark gray */
-    {255, 0,   0}, /* red */
-    {0,   255, 0}, /* green */
-    {255, 255, 0}, /* yellow */
-    {0,   0,   255}, /* blue */
-    {255, 0,   255}, /* magenta */
-    {0,   255, 255}, /* cyan */
-    {255, 255, 255}, /* white */
+    {0x55, 0x55, 0x55},    /* 8  gray */
+    {0x55, 0x55, 0xFF},    /* 9  light blue */
+    {0x55, 0xFF, 0x55},    /* 10 light green */
+    {0x55, 0xFF, 0xFF},    /* 11 light cyan */
+    {0xFF, 0x55, 0x55},    /* 12 light red */
+    {0xFF, 0x55, 0xFF},    /* 13 light magenta */
+    {0xFF, 0xFF, 0x55},    /* 14 yellow */
+    {0xFF, 0xFF, 0xFF},    /* 15 white */
 };
 
 static void console_callback(console_t console, console_update_t * p, void * data) {

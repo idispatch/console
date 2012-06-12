@@ -60,6 +60,24 @@ typedef struct {
     } data;
 } console_update_t;
 
+/* Color indices */
+#define CONSOLE_BLACK          0
+#define CONSOLE_BLUE           1
+#define CONSOLE_GREEN          2
+#define CONSOLE_CYAN           3
+#define CONSOLE_RED            4
+#define CONSOLE_MAGENTA        5
+#define CONSOLE_BROWN          6
+#define CONSOLE_LIGHT_GRAY     7
+#define CONSOLE_DARK_GRAY      8
+#define CONSOLE_LIGHT_BLUE     9
+#define CONSOLE_LIGHT_GREEN    10
+#define CONSOLE_LIGHT_CYAN     11
+#define CONSOLE_LIGHT_RED      12
+#define CONSOLE_LIGHT_MAGENTA  13
+#define CONSOLE_YELLOW         14
+#define CONSOLE_WHITE          15
+
 struct console;
 typedef struct console * console_t;
 typedef void (*console_callback_t)(console_t console, console_update_t * p, void * data);
