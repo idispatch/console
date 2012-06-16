@@ -79,7 +79,7 @@ console_t console_alloc(unsigned width, unsigned height) {
     console_set_tab_width(console, 4);
     console_set_callback(console, NULL, NULL);
     console_set_palette(console, &g_palette[0]);
-    console_set_font(console, FONT_8x8_SYSTEM);
+    console_set_font(console, FONT_8x8);
     console_set_cursor_blink_rate(console, 200);
     console_show_cursor(console);
     console_clear(console);

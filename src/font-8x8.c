@@ -1,3 +1,6 @@
+#include "font.h"
+
+#ifdef CONSOLE_USE_FONT_8x8
 unsigned char console_font_8x8[] = {
 
 /*
@@ -3073,3 +3076,4 @@ unsigned char console_font_8x8[] = {
 0x00, /* 00000000 */
 
 };
+#endif

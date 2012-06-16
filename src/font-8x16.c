@@ -1,3 +1,6 @@
+#include "font.h"
+
+#ifdef CONSOLE_USE_FONT_8x16
 unsigned char console_font_8x16[] = {
     /* 0 0x00 '^@' */
     0x00, /* 00000000 */
@@ -4607,3 +4610,4 @@ unsigned char console_font_8x16[] = {
     0x00, /* 00000000 */
     0x00, /* 00000000 */
 };
+#endif
