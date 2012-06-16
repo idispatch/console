@@ -53,4 +53,67 @@ typedef struct {
 
 extern const font_t console_fonts[];
 
+typedef enum {
+#ifdef CONSOLE_USE_FONT_4x6
+    FONT_4x6,
+#endif
+#ifdef CONSOLE_USE_FONT_4x7
+    FONT_4x7,
+#endif
+#ifdef CONSOLE_USE_FONT_5x8
+    FONT_5x8,
+#endif
+#ifdef CONSOLE_USE_FONT_5x12
+    FONT_5x12,
+#endif
+#ifdef CONSOLE_USE_FONT_6x8
+    FONT_6x8,
+#endif
+#ifdef CONSOLE_USE_FONT_7x9
+    FONT_7x9,
+#endif
+#ifdef CONSOLE_USE_FONT_8x8
+    FONT_8x8,
+#endif
+#ifdef CONSOLE_USE_FONT_8x10
+    FONT_8x10,
+#endif
+#ifdef CONSOLE_USE_FONT_8x16
+    FONT_8x16,
+#endif
+#ifdef CONSOLE_USE_FONT_9x8
+    FONT_9x8,
+#endif
+#ifdef CONSOLE_USE_FONT_9x16
+    FONT_9x16,
+#endif
+#ifdef CONSOLE_USE_FONT_10x20
+    FONT_10x20,
+#endif
+#ifdef CONSOLE_USE_FONT_12x16
+    FONT_12x16,
+#endif
+#ifdef CONSOLE_USE_FONT_12x23
+    FONT_12x23,
+#endif
+#ifdef CONSOLE_USE_FONT_12x24
+    FONT_12x24,
+#endif
+#ifdef CONSOLE_USE_FONT_12x27
+    FONT_12x27,
+#endif
+#ifdef CONSOLE_USE_FONT_14x30
+    FONT_14x30,
+#endif
+#ifdef CONSOLE_USE_FONT_16x32
+    FONT_16x32,
+#endif
+#ifdef CONSOLE_USE_FONT_16x37
+    FONT_16x37,
+#endif
+#ifdef CONSOLE_USE_FONT_25x57
+    FONT_25x57,
+#endif
+} font_id_t;
+
 #endif /* FONT_H_ */

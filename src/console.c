@@ -35,11 +35,12 @@ struct console {
 
     struct cell * buffer;
 
+    console_mode mode;
     unsigned tab_width;
     unsigned char cursor_state;
     unsigned cursor_blink_rate;
     console_rgb_t palette[16];
-    unsigned char * font_bitmap;
+    font_id_t font_id;
     console_callback_t callback;
     void * callback_data;
 };
@@ -72,14 +73,15 @@ static console_rgb_t g_palette[] = {
 static void console_callback(console_t console, console_update_t * p, void * data) {
 }
 
-console_t console_alloc(unsigned width, unsigned height) {
+console_t console_alloc(unsigned width, unsigned height, font_id_t font) {
     console_t console = (console_t)calloc(1, sizeof(struct console));
     console->view_width = width;
     console->view_height = height;
+    console_set_mode(console, CONSOLE_MODE_RAW);
     console_set_tab_width(console, 4);
     console_set_callback(console, NULL, NULL);
     console_set_palette(console, &g_palette[0]);
-    console_set_font(console, FONT_8x8);
+    console_set_font(console, font);
     console_set_cursor_blink_rate(console, 200);
     console_show_cursor(console);
     console_clear(console);
@@ -193,14 +195,13 @@ void console_get_palette(console_t console, console_rgb_t * palette) {
 }
 
 void console_set_font(console_t console, font_id_t font) {
-    unsigned char * old_font = console->font_bitmap;
-    unsigned char * new_font = console_fonts[font].font_bitmap;
-    if(old_font == new_font)
+    if(console->font_id == font)
         return;
+
+    console->font_id = font;
 
     console->char_height = console_fonts[font].char_height;
     console->char_width = console_fonts[font].char_width;
-    console->font_bitmap = new_font;
 
     console->width = console->view_width / console->char_width;
     console->height = console->view_height / console->char_height;
@@ -212,8 +213,12 @@ void console_set_font(console_t console, font_id_t font) {
     u.type = CONSOLE_UPDATE_FONT;
     u.data.u_font.char_width = console->char_width;
     u.data.u_font.char_height = console->char_height;
-    u.data.u_font.font_bitmap = console->font_bitmap;
+    u.data.u_font.font_bitmap = console_fonts[font].font_bitmap;
     console->callback(console, &u, console->callback_data);
+}
+
+font_id_t console_get_font(console_t console) {
+    return console->font_id;
 }
 
 static void console_update_rows(console_t console, unsigned x1, unsigned y1, unsigned x2, unsigned y2) {
@@ -268,30 +273,25 @@ void console_print_char(console_t console, unsigned char c) {
         return;
     }
 
-    size_t offset = console->cursor_y * console->width + console->cursor_x;
-    console->buffer[offset].cell.character = c;
-    console->buffer[offset].cell.attribute = console->attribute;
+    if(console->mode == CONSOLE_MODE_RAW) {
+        size_t offset = console->cursor_y * console->width + console->cursor_x;
+        unsigned char old_c = console->buffer[offset].cell.character;
+        unsigned char old_a = console->buffer[offset].cell.attribute;
+        console->buffer[offset].cell.character = c;
+        console->buffer[offset].cell.attribute = console->attribute;
 
-    console_update_t u;
-    u.type = CONSOLE_UPDATE_CHAR;
-    u.data.u_char.x = console->cursor_x;
-    u.data.u_char.y = console->cursor_y;
-    u.data.u_char.c = c;
-    u.data.u_char.a = console->attribute;
-    console->callback(console, &u, console->callback_data);
+        if(old_c != c || old_a != console->attribute) {
+            console_update_t u;
+            u.type = CONSOLE_UPDATE_CHAR;
+            u.data.u_char.x = console->cursor_x;
+            u.data.u_char.y = console->cursor_y;
+            u.data.u_char.c = c;
+            u.data.u_char.a = console->attribute;
+            console->callback(console, &u, console->callback_data);
+        }
 
-    console_cursor_advance(console);
-}
-
-void console_print_string(console_t console, const unsigned char * str) {
-    if(!str || !*str)
-        return;
-    unsigned x1 = console->cursor_x;
-    unsigned y1 = console->cursor_y;
-    do {
-        console_print_char(console, *str++);
-    } while(*str);
-    console_update_rows(console, x1, y1, console->cursor_x, console->cursor_y);
+        console_cursor_advance(console);
+    }
 }
 
 void console_set_attribute(console_t console, unsigned char attr) {
@@ -300,29 +300,37 @@ void console_set_attribute(console_t console, unsigned char attr) {
 
 void console_set_character_and_attribute_at(console_t console, unsigned x, unsigned y, unsigned char c, unsigned char attr) {
     size_t offset = y * console->width + x;
+    unsigned char old_c = console->buffer[offset].cell.character;
+    unsigned char old_a = console->buffer[offset].cell.attribute;
     console->buffer[offset].cell.character = c;
     console->buffer[offset].cell.attribute = attr;
 
-    console_update_t u;
-    u.type = CONSOLE_UPDATE_CHAR;
-    u.data.u_char.x = x;
-    u.data.u_char.y = y;
-    u.data.u_char.c = c;
-    u.data.u_char.a = attr;
-    console->callback(console, &u, console->callback_data);
+    if(old_c != c || old_a != attr) {
+        console_update_t u;
+        u.type = CONSOLE_UPDATE_CHAR;
+        u.data.u_char.x = x;
+        u.data.u_char.y = y;
+        u.data.u_char.c = c;
+        u.data.u_char.a = attr;
+        console->callback(console, &u, console->callback_data);
+    }
 }
 
 void console_set_character_and_attribute_at_offset(console_t console, unsigned offset, unsigned char c, unsigned char attr) {
+    unsigned char old_c = console->buffer[offset].cell.character;
+    unsigned char old_a = console->buffer[offset].cell.attribute;
     console->buffer[offset].cell.character = c;
     console->buffer[offset].cell.attribute = attr;
 
-    console_update_t u;
-    u.type = CONSOLE_UPDATE_CHAR;
-    u.data.u_char.x = offset % console->width;
-    u.data.u_char.y = offset / console->width;
-    u.data.u_char.c = c;
-    u.data.u_char.a = attr;
-    console->callback(console, &u, console->callback_data);
+    if(old_c != c || old_a != attr) {
+        console_update_t u;
+        u.type = CONSOLE_UPDATE_CHAR;
+        u.data.u_char.x = offset % console->width;
+        u.data.u_char.y = offset / console->width;
+        u.data.u_char.c = c;
+        u.data.u_char.a = attr;
+        console->callback(console, &u, console->callback_data);
+    }
 }
 
 void console_cursor_goto_xy(console_t console, unsigned x, unsigned y) {
@@ -331,19 +339,18 @@ void console_cursor_goto_xy(console_t console, unsigned x, unsigned y) {
     if(y >= console->height)
         y = console->height - 1;
 
-    if(x==console->cursor_x && y==console->cursor_y)
-        return;
+    if(x!=console->cursor_x || y!=console->cursor_y) {
+        console_update_t u;
+        u.type = CONSOLE_UPDATE_CURSOR_POSITION;
+        u.data.u_cursor.cursor_visible = true;
+        u.data.u_cursor.x = console->cursor_x;
+        u.data.u_cursor.y = console->cursor_y;
 
-    console_update_t u;
-    u.type = CONSOLE_UPDATE_CURSOR_POSITION;
-    u.data.u_cursor.cursor_visible = true;//console_cursor_is_shown(console);
-    u.data.u_cursor.x = console->cursor_x;
-    u.data.u_cursor.y = console->cursor_y;
+        console->cursor_x = x;
+        console->cursor_y = y;
 
-    console->cursor_x = x;
-    console->cursor_y = y;
-
-    console->callback(console, &u, console->callback_data);
+        console->callback(console, &u, console->callback_data);
+    }
 }
 
 void console_scroll_lines(console_t console, unsigned n) {
@@ -448,5 +455,14 @@ unsigned char * console_get_char_bitmap(console_t console, unsigned char c) {
     unsigned bytes_per_row = console->char_width / 8;
     unsigned bytes_per_char = bytes_per_row * console->char_height;
     unsigned offset = c * bytes_per_char;
-    return &console->font_bitmap[offset];
+    return &console_fonts[console->font_id].font_bitmap[offset];
 }
+
+void console_set_mode(console_t console, console_mode mode) {
+    console->mode = mode;
+}
+
+console_mode console_get_mode(console_t console) {
+    return console->mode;
+}
+

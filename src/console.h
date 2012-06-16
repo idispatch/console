@@ -24,6 +24,11 @@ typedef enum {
     CONSOLE_UPDATE_CURSOR_POSITION
 } console_update_type;
 
+typedef enum {
+    CONSOLE_MODE_RAW,
+    CONSOLE_MODE_ANSI
+} console_mode;
+
 typedef struct {
     console_update_type type;
     union {
@@ -86,77 +91,15 @@ typedef void (*console_callback_t)(console_t console, console_update_t * p, void
 
 #include "font.h"
 
-typedef enum {
-#ifdef CONSOLE_USE_FONT_4x6
-    FONT_4x6,
-#endif
-#ifdef CONSOLE_USE_FONT_4x7
-    FONT_4x7,
-#endif
-#ifdef CONSOLE_USE_FONT_5x8
-    FONT_5x8,
-#endif
-#ifdef CONSOLE_USE_FONT_5x12
-    FONT_5x12,
-#endif
-#ifdef CONSOLE_USE_FONT_6x8
-    FONT_6x8,
-#endif
-#ifdef CONSOLE_USE_FONT_7x9
-    FONT_7x9,
-#endif
-#ifdef CONSOLE_USE_FONT_8x8
-    FONT_8x8,
-#endif
-#ifdef CONSOLE_USE_FONT_8x10
-    FONT_8x10,
-#endif
-#ifdef CONSOLE_USE_FONT_8x16
-    FONT_8x16,
-#endif
-#ifdef CONSOLE_USE_FONT_9x8
-    FONT_9x8,
-#endif
-#ifdef CONSOLE_USE_FONT_9x16
-    FONT_9x16,
-#endif
-#ifdef CONSOLE_USE_FONT_10x20
-    FONT_10x20,
-#endif
-#ifdef CONSOLE_USE_FONT_12x16
-    FONT_12x16,
-#endif
-#ifdef CONSOLE_USE_FONT_12x23
-    FONT_12x23,
-#endif
-#ifdef CONSOLE_USE_FONT_12x24
-    FONT_12x24,
-#endif
-#ifdef CONSOLE_USE_FONT_12x27
-    FONT_12x27,
-#endif
-#ifdef CONSOLE_USE_FONT_14x30
-    FONT_14x30,
-#endif
-#ifdef CONSOLE_USE_FONT_16x32
-    FONT_16x32,
-#endif
-#ifdef CONSOLE_USE_FONT_16x37
-    FONT_16x37,
-#endif
-#ifdef CONSOLE_USE_FONT_25x57
-    FONT_25x57,
-#endif
-} font_id_t;
-
-console_t console_alloc(unsigned width, unsigned height);
+console_t console_alloc(unsigned width, unsigned height, font_id_t font);
 void console_free(console_t console);
 void console_clear(console_t console);
 unsigned short * console_get_raw_buffer(console_t console);
+void console_set_mode(console_t console, console_mode mode);
+console_mode console_get_mode(console_t console);
 void console_set_tab_width(console_t console, unsigned width);
 unsigned console_get_tab_width(console_t console);
 void console_print_char(console_t console, unsigned char c);
-void console_print_string(console_t console, const unsigned char * str);
 void console_cursor_goto_xy(console_t console, unsigned x, unsigned y);
 void console_save_cursor_position(console_t console);
 void console_restore_cursor_position(console_t console);
@@ -181,6 +124,7 @@ unsigned char console_get_foreground_color(console_t console);
 void console_set_palette(console_t console, console_rgb_t const * palette);
 void console_get_palette(console_t console, console_rgb_t * palette);
 void console_set_font(console_t console, font_id_t font);
+font_id_t console_get_font(console_t console);
 unsigned char * console_get_char_bitmap(console_t console, unsigned char c);
 void console_set_callback(console_t console, console_callback_t callback, void * data);
 void console_set_cursor_blink_rate(console_t console, unsigned rate);
