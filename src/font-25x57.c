@@ -1,6 +1,6 @@
 #include "font.h"
 
-#ifdef CONSOLE_USE_FONT_12x57
+#ifdef CONSOLE_USE_FONT_25x57
 unsigned char console_font_25x57[] = {
 
     /*

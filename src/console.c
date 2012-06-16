@@ -452,7 +452,7 @@ unsigned char console_get_foreground_color(console_t console) {
 }
 
 unsigned char * console_get_char_bitmap(console_t console, unsigned char c) {
-    unsigned bytes_per_row = console->char_width / 8;
+    unsigned bytes_per_row = (console->char_width + 7) / 8;
     unsigned bytes_per_char = bytes_per_row * console->char_height;
     unsigned offset = c * bytes_per_char;
     return &console_fonts[console->font_id].font_bitmap[offset];
