@@ -299,6 +299,8 @@ void console_set_attribute(console_t console, unsigned char attr) {
 }
 
 void console_set_character_and_attribute_at(console_t console, unsigned x, unsigned y, unsigned char c, unsigned char attr) {
+    if(x >= console->width || y >= console->height)
+        return;
     size_t offset = y * console->width + x;
     unsigned char old_c = console->buffer[offset].cell.character;
     unsigned char old_a = console->buffer[offset].cell.attribute;
@@ -317,6 +319,8 @@ void console_set_character_and_attribute_at(console_t console, unsigned x, unsig
 }
 
 void console_set_character_and_attribute_at_offset(console_t console, unsigned offset, unsigned char c, unsigned char attr) {
+    if(offset >= console->width * console->height)
+        return;
     unsigned char old_c = console->buffer[offset].cell.character;
     unsigned char old_a = console->buffer[offset].cell.attribute;
     console->buffer[offset].cell.character = c;
@@ -338,7 +342,6 @@ void console_cursor_goto_xy(console_t console, unsigned x, unsigned y) {
         x = console->width - 1;
     if(y >= console->height)
         y = console->height - 1;
-
     if(x!=console->cursor_x || y!=console->cursor_y) {
         console_update_t u;
         u.type = CONSOLE_UPDATE_CURSOR_POSITION;
@@ -432,14 +435,20 @@ unsigned char console_get_character_at(console_t console, unsigned x, unsigned y
 }
 
 unsigned char console_get_character_at_offset(console_t console, unsigned offset) {
+    if(offset >= console->width * console->height)
+        return 0;
     return console->buffer[offset].cell.character;
 }
 
 unsigned char console_get_attribute_at(console_t console, unsigned x, unsigned y) {
+    if(x >= console->width || y >= console->height)
+        return 0;
     return console->buffer[y * console->width + x].cell.attribute;
 }
 
 unsigned char console_get_attribute_at_offset(console_t console, unsigned offset) {
+    if(offset >= console->width * console->height)
+        return 0;
     return console->buffer[offset].cell.attribute;
 }
 
@@ -464,5 +473,11 @@ void console_set_mode(console_t console, console_mode mode) {
 
 console_mode console_get_mode(console_t console) {
     return console->mode;
+}
+
+void console_refresh(console_t console) {
+    console_update_t u;
+    u.type = CONSOLE_UPDATE_REFRESH;
+    console->callback(console, &u, console->callback_data);
 }
 

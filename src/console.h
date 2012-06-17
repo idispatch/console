@@ -18,6 +18,7 @@ typedef enum {
     CONSOLE_UPDATE_CHAR,
     CONSOLE_UPDATE_ROWS,
     CONSOLE_UPDATE_SCROLL,
+    CONSOLE_UPDATE_REFRESH,
     CONSOLE_UPDATE_PALETTE,
     CONSOLE_UPDATE_FONT,
     CONSOLE_UPDATE_CURSOR_VISIBILITY,
@@ -132,6 +133,7 @@ unsigned console_get_cursor_blink_rate(console_t console);
 void console_blink_cursor(console_t console);
 void console_show_cursor(console_t console);
 void console_hide_cursor(console_t console);
+void console_refresh(console_t console);
 
 #ifdef __cplusplus
 }
